@@ -28,7 +28,7 @@ struct TaskManager
     pthread_t *threads;
     vector<Task> tasks;
     int active_threads_count;
-    int completed_tasks_count;//////////////////////////////////////////
+    int completed_tasks_count;
     int count_tasks_ended;
     bool finish;
 };
@@ -40,10 +40,6 @@ struct ForThread
     int semid;
 };
 
-pthread_cond_t finished_task;
-pthread_cond_t start_task;
-
-pthread_mutex_t start_task_mutex;
 pthread_mutex_t mutex;
 
 int PrintVector(string *m, int count);
@@ -379,10 +375,6 @@ int main(int argc, char**argv)
 
     arr = ReadFromFile(argv[1], &count);
 
-    pthread_cond_init(&finished_task, NULL);
-    pthread_cond_init(&start_task, NULL);
-
-    pthread_mutex_init(&start_task_mutex, NULL);
     pthread_mutex_init(&mutex, NULL);
 
     PrintVector(arr, count);
@@ -393,10 +385,6 @@ int main(int argc, char**argv)
 
     WriteToFile(argv[2], arr, count);
 
-
-    pthread_cond_destroy(&finished_task);
-    pthread_cond_destroy(&start_task);
-    pthread_mutex_destroy(&start_task_mutex);
     pthread_mutex_destroy(&mutex);
 
 }
