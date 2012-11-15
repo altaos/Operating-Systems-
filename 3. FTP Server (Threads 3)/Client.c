@@ -7,7 +7,6 @@
 #include <netinet/in.h>
 #include <fcntl.h>
 #include<pthread.h>
-//#include "Header.h"
 
 #define RESPONSE_LENGTH 40
 #define COMMAND_LENGTH 128
@@ -58,8 +57,6 @@ int Proc(int sock, int count)
     strcpy(com[2].command,"ls");
     strcpy(com[3].command,"cd jdk1.7.0_09");
     strcpy(com[4].command,"cd ..");
-    //strcpy(com[4].command,"cd aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-    //strcpy(com[6].command,"ls");
 
     while(i < count)
     {
