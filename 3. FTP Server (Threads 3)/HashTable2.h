@@ -1,17 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-//#include "Header.h"
-//#include "Queue.h"
 
 const int tableSize = 301;
-//#define tableSize 301;
 const int step = 1;
 
 struct HashItem
 {
     char direct[128];
-    //Queue *responseQueue;/////////////////
     int id;
     int empty;
     int visit;
@@ -42,8 +38,6 @@ int InsertToHashTable(struct HashTable *table, char* info, int clientid)
             table->arrayHash[i].empty = 0;//false
             table->arrayHash[i].visit = 1;//true
             strcpy(table->arrayHash[i].direct, info);
-            //table->arrayHash[i].direct = info;
-            //InitializeQueue(table->arrayHash[i].responseQueue);//////////
             table->arrayHash[i].id = clientid;
             table->size++;
             return i;
@@ -57,8 +51,6 @@ int InsertToHashTable(struct HashTable *table, char* info, int clientid)
             table->arrayHash[i].empty = 0;
             table->arrayHash[i].visit = 1;
             strcpy(table->arrayHash[i].direct, info);
-            //table->arrayHash[i].direct = info;
-            //InitializeQueue(table->arrayHash[i].responseQueue);////////////
             printf("In Col %d :  %s", i, table->arrayHash[i].direct);
             table->arrayHash[i].id = clientid;
             table->size++;
@@ -133,8 +125,6 @@ int DelFromHashTable(struct HashTable* table, int clientid)
 int ChangeHashTable(struct HashTable *table, int index, char *newDir)
 {
     strcpy(table->arrayHash[index].direct, newDir);
-    //table->arrayHash[index].direct = newDir;
-
     return 0;
 }
 
@@ -160,83 +150,3 @@ int DistructHash(struct HashTable *table)
 
     return 0;
 }
-
-/*int main(int argc, char** argv)
-{
-    struct HashTable table = HashInit();
-    printf("Adding\n");
-
-    char* a = "/home/alina/\0";
-    InsertToHashTable(&table, a, 7);
-    InsertToHashTable(&table, a, 8);
-
-    int index = FindIndex(&table, 7);
-    printf("index = %d\n", index);
-    char *dirc = GetDirect(table, index);
-    printf("dirc = %s\n", dirc);
-
-    index = FindIndex(&table, 8);
-    printf("index = %d\n", index);
-    dirc = GetDirect(table, index);
-    printf("dirc = %s\n", dirc);
-
-    index = FindIndex(&table, 7);
-    printf("index = %d\n", index);
-    dirc = GetDirect(table, index);
-    printf("old dirc = %s\n", dirc);
-    dirc = "/home/alina/Изображения/\0";
-    ChangeHashTable(&table, index, dirc);
-    printf("new dirc = %s\n", GetDirect(table, index));
-
-    index = FindIndex(&table, 8);
-    printf("index = %d\n", index);
-    dirc = GetDirect(table, index);
-    printf("old dirc = %s\n", dirc);
-    dirc = "/home/alina/Изображения/\0";
-    ChangeHashTable(&table, index, dirc);
-    printf("new dirc = %s\n", GetDirect(table, index));
-
-
-    index = FindIndex(&table, 8);
-    printf("index = %d\n", index);
-    dirc = GetDirect(table, index);
-    printf("old dirc = %s\n", dirc);
-    dirc = "/home/alina/Изображения/111/\0";
-    ChangeHashTable(&table, index, dirc);
-    printf("new dirc = %s\n", GetDirect(table, index));
-
-    index = FindIndex(&table, 7);
-    printf("index = %d\n", index);
-    dirc = GetDirect(table, index);
-    printf("old dirc = %s\n", dirc);
-    dirc = "/home/alina/Изображения/111/\0";
-    ChangeHashTable(&table, index, dirc);
-    printf("new dirc = %s\n", GetDirect(table, index));
-
-    printf("LS1=======================================================\n");
-
-    index = FindIndex(&table, 8);
-    printf("index = %d\n", index);
-    dirc = GetDirect(table, index);
-    printf("dirc = %s\n", dirc);
-
-    index = FindIndex(&table, 7);
-    printf("index = %d\n", index);
-    dirc = GetDirect(table, index);
-    printf("dirc = %s\n", dirc);
-
-    printf("LS2=======================================================\n");
-
-    index = FindIndex(&table, 8);
-    printf("index = %d\n", index);
-    dirc = GetDirect(table, index);
-    printf("dirc = %s\n", dirc);
-
-    index = FindIndex(&table, 7);
-    printf("index = %d\n", index);
-    dirc = GetDirect(table, index);
-    printf("dirc = %s\n", dirc);
-
-    return 0;
-
-}*/
