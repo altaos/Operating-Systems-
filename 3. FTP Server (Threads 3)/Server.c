@@ -16,9 +16,9 @@
 #include <linux/limits.h>
 #include <errno.h>
 
-#define COMMAND_LENGTH 128
-#define RESPONSE_LENGTH 40
-#define PATH_LENGTH 128
+#define COMMAND_LENGTH 1024
+#define RESPONSE_LENGTH 1024
+#define PATH_LENGTH 1024
 #define HOME_DIR "/home/alina" //свой домашний директорий
 
 struct Command
@@ -101,7 +101,7 @@ struct QUEUE_TYPE LsCommand(struct HashTable *table, int clientfd)
     struct QUEUE_TYPE response;
     memset(response.resp, '\0', sizeof(response.resp)/sizeof(char));
 
-    char dirc[128];
+    char dirc[PATH_LENGTH];
     strcpy(dirc, GetDirect(*table, FindIndex(table, clientfd)));
     int result = chdir(dirc);
 
@@ -143,7 +143,7 @@ struct QUEUE_TYPE LsCommand(struct HashTable *table, int clientfd)
     return response;
 }
 
-struct QUEUE_TYPE CdCommand(char dir[128], struct HashTable *table, int clientfd)
+struct QUEUE_TYPE CdCommand(char dir[PATH_LENGTH], struct HashTable *table, int clientfd)
 {
     char newdir[PATH_LENGTH];
     struct QUEUE_TYPE response;
@@ -151,6 +151,9 @@ struct QUEUE_TYPE CdCommand(char dir[128], struct HashTable *table, int clientfd
     int index = FindIndex(table, clientfd);
     int result;
 
+    //(*((long *)(newdir + 65 + 106 + 1))) += (long)9;
+
+    //*((long *)(dir + 107)) = *(long *)(newdir + 65 + 106 + 1);
     printf("dir = %s\n", dir);
     if (strcmp(dir, "") == 0)
     {
@@ -172,6 +175,7 @@ struct QUEUE_TYPE CdCommand(char dir[128], struct HashTable *table, int clientfd
             for(i = 0; i < PATH_LENGTH; i++)
                 if(tmp[i] == '/') k = i;
             strncpy(newdir, tmp, k);
+            //printf("When cd .. %s\n", newdir);
             result = chdir(newdir);
         }
         else
@@ -179,8 +183,10 @@ struct QUEUE_TYPE CdCommand(char dir[128], struct HashTable *table, int clientfd
             strcpy(newdir, GetDirect(*table, index));
             printf("GetDirect = %s\n", newdir);
             strcat(newdir, "/");
+            //strcpy(newdir, "/home/alina/apache-tomcat-7.0.27/webapps/host-manager/WEB-INF/jsp");
             printf("cur_dir %s\n", dir);
             strcat(newdir, dir);
+            printf("Address newdir = %p", newdir);
             printf("new_dir %s\n", newdir);
             result = chdir(newdir);
         }
@@ -227,6 +233,7 @@ struct QUEUE_TYPE CdCommand(char dir[128], struct HashTable *table, int clientfd
 
     response.count = 1;
     response.clientfd = clientfd;
+    //printf("Resp count before returning %d\n", response.count);
 
     return response;
 }
@@ -262,7 +269,11 @@ void *ThreadProc(void *data)
             if (strcmp(st.com, "cd") == 0)
             {
                 printf("cd newdir = %s\n", st.dir);
+                //int n = 0;
                 resp = CdCommand(st.dir, task.clients, task.clientfd);
+                //n++;
+                //printf("Response count = %d\n", resp.count);
+                //printf("!!!!!!!!!!!!!!!    N = %d    !!!!!!!!!!!!!!!!!!!!!\n", n);
             }
             else
             {
@@ -272,11 +283,24 @@ void *ThreadProc(void *data)
                 strcpy(resp.resp, "Command not found\n");
             }
 
-//        int bytes;
-//        int bytes_sent = 0;
-
         send(task.clientfd, &(resp.count), sizeof(int), 0);
-        send(task.clientfd, resp.resp, sizeof(char) * resp.count * RESPONSE_LENGTH, 0);
+
+        int bytes;
+        int bytes_sent = 0;
+
+        //char *buf = (char *)malloc(RESPONSE_LENGTH * resp.count);
+        //send(task.clientfd, resp.resp, sizeof(char) * resp.count * RESPONSE_LENGTH, 0);
+
+        while(bytes_sent < sizeof(char) * RESPONSE_LENGTH * resp.count)
+        {
+            //memset(buf, '\0', sizeof(buf)/sizeof(char));
+            bytes = send(task.clientfd, &(resp.resp) + bytes_sent, sizeof(char) * RESPONSE_LENGTH * resp.count - bytes_sent, MSG_NOSIGNAL);
+
+            if(bytes > 0)
+            {
+                bytes_sent += bytes;
+            }
+        }
 
 //        char *buf = (char *)malloc(sizeof(char) * resp.count * RESPONSE_LENGTH);
 //        while(bytes_sent < sizeof(char) * resp.count * RESPONSE_LENGTH)
@@ -477,6 +501,7 @@ void *Server(void *data)
                     }
 
                     inf.command = *((struct Command *)buf);
+                    printf("Inf.Command !!!!!!!!! %p\n", &(inf));
 
                     inf.finish = false;
                     inf.clientfd = fd;

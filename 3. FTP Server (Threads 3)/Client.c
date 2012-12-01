@@ -8,8 +8,8 @@
 #include <fcntl.h>
 #include<pthread.h>
 
-#define RESPONSE_LENGTH 40
-#define COMMAND_LENGTH 128
+#define RESPONSE_LENGTH 1024
+#define COMMAND_LENGTH 1024
 
 struct Command
 {
