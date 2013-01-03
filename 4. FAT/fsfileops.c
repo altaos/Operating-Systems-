@@ -214,7 +214,7 @@ long ReadCatalog(long cluster_number)
 
 //    struct File_Record catalog[ELEMENT_COUNT_IN_CATALOG];
     fseek(file, sizeof(long)*(2+CLUSTER_COUNT_FAT)+CLUSTER_SIZE*cluster_number, SEEK_SET);
-    fread(temporary_catalog, sizeof(struct File_Record [ELEMENT_COUNT_IN_CATALOG]), 1 , file);
+    fread(&temporary_catalog, sizeof(struct File_Record), ELEMENT_COUNT_IN_CATALOG, file);
     fclose(file);
 
     return 0;
@@ -222,7 +222,7 @@ long ReadCatalog(long cluster_number)
 }
 
 //запись каталога
-long WriteCatalog(struct File_Record cat[ELEMENT_COUNT_IN_CATALOG], long cluster_number)
+long WriteCatalog(struct File_Record *cat, long cluster_number)
 {
     FILE *file;
     if((file=fopen(fsfilename,"r+b"))==0)
@@ -231,10 +231,10 @@ long WriteCatalog(struct File_Record cat[ELEMENT_COUNT_IN_CATALOG], long cluster
     }
 
     fseek(file, sizeof(long)*(2+CLUSTER_COUNT_FAT)+CLUSTER_SIZE*cluster_number, SEEK_SET);
-    fwrite(cat, sizeof(struct File_Record [ELEMENT_COUNT_IN_CATALOG]), 1, file);
+    fwrite(cat, sizeof(struct File_Record), ELEMENT_COUNT_IN_CATALOG, file);
     fclose(file);
 
-/*    if (free_cluster = FindFreeCluster() < 0)//////////////////////////////////////////////////////////
+    if (free_cluster = FindFreeCluster() < 0)//////////////////////////////////////////////////////////
     {
         printf("File is empty\n");
     }
@@ -242,8 +242,9 @@ long WriteCatalog(struct File_Record cat[ELEMENT_COUNT_IN_CATALOG], long cluster
     {
         WriteFreeCluster(free_cluster);
         FreeClusterIndex(-1);///////////////////////////////////////////////////////////////
+        //WriteFreeClusterCount();
     }
-*/
+
     return 0;
 }
 
@@ -480,24 +481,79 @@ long TruncFile(long first_cluster_number, long offset, long size)
 
 }
 
+//удаление ссылки на файл или директорию из родительского каталога
+long RemoveHardLink(long parent_cluster_number, long first_cluster_number_child)
+{
+    if (ReadCatalog(parent_cluster_number) < 0)
+        return -EIO;
+
+    int i = -1;
+    while(first_cluster_number_child != temporary_catalog[++i].first_cluster) {}
+    //индекс записи в каталоге для удаляемого файла найден, теперь затираем эту запись
+    temporary_catalog[i].file_size = 0;
+    temporary_catalog[i].first_cluster = 0;
+    temporary_catalog[i].isCatalog = '0';//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! pfxb
+
+    if (WriteCatalog(temporary_catalog, parent_cluster_number) < 0)
+        return -EIO;
+}
+
+//получение номера кластера родительского каталога
+long GetParentFirstCluster(const char *path)
+{
+    int l = strlen(path);
+    while(path[l] != '/' && l >= 0)
+            l--;
+    if(l < 0)
+        return -1;
+    char parent_path[l+2];
+    if(l == 0)
+    {
+        strncpy(parent_path, '/', 1);
+        parent_path[l] = '\0';
+    }
+
+    return GetNumberFirstClusterByPath(parent_path);
+}
+
+long GetSizeFromParent(long parent_first_cluster, long child_first_cluster)
+{
+    if (ReadCatalog(parent_cluster_number) < 0)
+        return -EIO;
+
+    int i = -1;
+    while(first_cluster_number_child != temporary_catalog[++i].first_cluster) {}
+
+    return temporary_catalog[i].file_size;
+}
+
+long RemoveFile(long parent_first_cluster, long child_first_cluster)
+{
+    if(TruncFile(child_first_cluster, 0, GetSizeFromParent(parent_first_cluster, child_first_cluster)) < 0)
+        return -EIO;
+    if(RemoveHardLink(parent_first_cluster, child_first_cluster) < 0)
+        return -EIO;
+    if(WriteCatalog(temporary_catalog, parent_first_cluster) < 0)
+        return -EIO;
+}
+
 int main()
 {
-/*
-    fsfilename = "test.dat";   
+   // fsfilename = "test.dat";
+    fsfilename = "a.dat";
     printf("%s\n", fsfilename);
-    int i;
 
     printf("free cluster count \n");
-    WriteFreeClusterCount(CLUSTER_COUNT_FAT-1);
-
+    WriteFreeClusterCount(CLUSTER_COUNT_FAT - 1);
     printf("free cluster \n");
     WriteFreeCluster(1);
 
+    int i;
     WriteValueFat(0, EOC);
     for (i=1; i<CLUSTER_COUNT_FAT; i++)
     {
         WriteValueFat(i, NOT_USED);
-        printf("element fat: %d\n", i);
+        printf("fat: %d\n", i);
     }
 
     printf("root catalog \n");
@@ -506,13 +562,49 @@ int main()
         int j=0;
         for (j=0; j<8; j++)
         {
-            root_catalog[i].name[j] = 'a';
+            root_catalog[i].name[j] = '0';
         }
         for (j=0; j<3; j++)
         {
-            root_catalog[i].extension[j] = 'b';
+            root_catalog[i].extension[j] = '0';
         }
+        root_catalog[i].first_cluster = 0;
+        root_catalog[i].file_size = 0;
+        root_catalog[i].ctime = time(NULL);
+        root_catalog[i].mtime = time(NULL);
+        root_catalog[i].atribute = '0';
+        root_catalog[i].isCatalog = 0;
+    }
+    WriteCatalog(root_catalog, 0);
 
+
+
+
+/*
+    printf("free cluster count \n");
+    WriteFreeClusterCount(CLUSTER_COUNT_FAT - 1);
+    printf("free cluster \n");
+    WriteFreeCluster(1);
+    int i;
+
+    WriteValueFat(0, EOC);
+    for (i=1; i<CLUSTER_COUNT_FAT; i++)
+    {
+        WriteValueFat(i, NOT_USED);
+        printf("fat: %d\n", i);
+    }
+    printf("root catalog \n");
+    for (i=0; i<ELEMENT_COUNT_IN_CATALOG; i++)
+    {
+        int j=0;
+        for (j=0; j<8; j++)
+        {
+            root_catalog[i].name[j] = '0';
+        }
+        for (j=0; j<3; j++)
+        {
+            root_catalog[i].extension[j] = '0';
+        }
         root_catalog[i].first_cluster = 0;
         root_catalog[i].file_size = 0;
         root_catalog[i].ctime = time(NULL);
@@ -523,66 +615,41 @@ int main()
     WriteCatalog(root_catalog, 0);
 
     char buf [CLUSTER_SIZE];
-    buf[0]='b';
-    for (i=1; i<CLUSTER_SIZE; i++)
+    for (i=0; i<CLUSTER_SIZE; i++)
     {
         buf[i]='0';
     }
-    buf[CLUSTER_SIZE-1]='e';
     printf("clusters \n");
-
-   for (i=1; i<CLUSTER_COUNT_FAT; i++)
+    for (i=0; i<CLUSTER_COUNT_FAT; i++)
     {
         WriteCluster(i, CLUSTER_SIZE, buf);
         printf("cluster: %d\n", i);
     }
+*/
 
-//////////Чтение из файла/////////////
-    long a;
-    a = ReadFreeClusterCount();
+    long a = ReadFreeClusterCount();
     printf("free cluster count: %ld\n", a);
 
     a = ReadFreeCluster();
     printf("free cluster: %ld\n", a);
 
-
     for (i=0; i<CLUSTER_COUNT_FAT; i++)
     {
         a = ReadValueFAT(i);
-        printf("fat %d value: %ld\n",i,a);
+        printf("fat value: %ld\n", a);
     }
 
     ReadCatalog(0);
     for (i=0; i<ELEMENT_COUNT_IN_CATALOG; i++)
     {
         printf("File Record %d\n", i);
-        int j;
-        printf("name: ");
-        for (j=0; j<8; j++)
-        {
-            printf("%c", temporary_catalog[i].name[j]);
-        }
-        printf("\n");
-        printf("extension: ");
-        for (j=0; j<3; j++)
-        {
-            printf("%c", temporary_catalog[i].extension[j]);
-        }
-        printf("\n");
+        printf("name %s\n", temporary_catalog[i].name);
+        printf("extension %s\n", temporary_catalog[i].extension);
         printf("first %ld\n", temporary_catalog[i].first_cluster);
         printf("size %ld\n", temporary_catalog[i].file_size);
-        printf("attribute %c\n", temporary_catalog[i].atribute);
+        printf("attribute %d\n", temporary_catalog[i].atribute);
         printf("is Catalog %d\n", temporary_catalog[i].isCatalog);
     }
 
-    printf("first claster: \n");
-    char res [CLUSTER_SIZE];
-    ReadCluster(1, CLUSTER_SIZE, res);
-    for (i=0; i<CLUSTER_SIZE; i++)
-    {
-        printf("%c", res[i]);
-    }
-    printf("\n");
-*/
     return 0;
 }
