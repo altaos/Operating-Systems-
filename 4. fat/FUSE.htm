@@ -1,0 +1,1644 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ru-RU" lang="ru-RU"><head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Разработка собственной файловой системы с помощью FUSE</title>
+<meta http-equiv="PICS-Label" content="(PICS-1.1 &quot;http://www.icra.org/ratingsv02.html&quot; l gen true r (cz 1 lz 1 nz 1 oz 1 vz 1) &quot;http://www.rsac.org/ratingsv01.html&quot; l gen true r (n 0 s 0 v 0 l 0) &quot;http://www.classify.org/safesurf/&quot; l gen true r (SS~~000 1))">
+<link rel="schema.DC" href="http://purl.org/DC/elements/1.0/">
+<link rel="SHORTCUT ICON" href="http://www.ibm.com/favicon.ico">
+  <meta name="Owner" content="developerWorks@ru.ibm.com">
+  <meta name="DC.Language" scheme="rfc1766" content="ru-RU">
+  <meta name="IBM.Country" content="RU">
+<meta name="Security" content="Public">
+<meta name="IBM.SpecialPurpose" content="SP001">
+<meta name="IBM.PageAttributes" content="sid=1003,1004">
+<meta name="Source" content="v16 Template Generator">
+<meta name="Robots" content="index,follow">
+<meta name="Abstract" content="С помощью Filesystem in Userspace (FUSE) вы можете разработать файловую систему в пространстве пользователя без знания внутреннего устройства файловой системы или изучения программирования модулей ядра.">
+<meta name="Description" content="С помощью Filesystem in Userspace (FUSE) вы можете разработать файловую систему в пространстве пользователя без знания внутреннего устройства файловой системы или изучения программирования модулей ядра.">
+<meta name="Keywords" content="fuse,filesystem in user space,afs,lwp,rx,rpc,remote procedure call,andrew filesystem,ufo project,openafs,lufs,cifs,userfs, tttlca">
+<meta name="DC.Date" scheme="iso8601" content="2006-02-28">
+<meta name="DC.Type" scheme="IBM_ContentClassTaxonomy" content="CT316">
+<meta name="DC.Subject" scheme="IBM_SubjectTaxonomy" content="SWGC0">
+<meta scheme="IBM_WTMCategory" name="IBM.WTMCategory" content="SOFDCLNXRU">
+<meta name="DC.Rights" content="© Copyright&nbsp;IBM Corporation&nbsp;2006">
+<meta name="IBM.Effective" scheme="W3CDTF" content="2006-02-28">
+<meta name="title" content="Разработка собственной файловой системы с помощью FUSE">
+
+<!-- HEADER_SCRIPTS_AND_CSS_INCLUDE -->
+<link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/all.css" media="all" rel="stylesheet" title="www" type="text/css">
+<link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/screen.css" media="screen,projection" rel="stylesheet" title="www" type="text/css">
+<link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/screen-uas.css" media="screen,projection" rel="stylesheet" title="www" type="text/css">
+<link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/screen-fonts.css" media="screen,projection" rel="stylesheet" title="www" type="text/css">
+<link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/handheld.css" media="handheld" rel="stylesheet" title="www" type="text/css">
+<link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/print.css" media="print" rel="stylesheet" title="www" type="text/css">
+<link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/overlay.css" media="screen,projection" rel="stylesheet" title="www" type="text/css">
+<!-- dW-specific CSS -->
+<link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/dw-screen.css" media="screen,projection" rel="stylesheet" title="www" type="text/css">
+<link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/dw-local-site.css" media="screen,projection" rel="stylesheet" title="www" type="text/css">
+<link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/dw-screen-comments-ratings-signin.css" media="screen,projection" rel="stylesheet" title="www" type="text/css">
+<link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/jquery.css" media="screen,projection" rel="stylesheet" title="www" type="text/css">
+<!-- JPP: LOCAL URL FOR TESTING V16 DEFIANT MASTHEAD/FOOTER -->
+<link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/dw-mf2012-01.css" rel="stylesheet" title="www" type="text/css">
+<link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/dw-mf-ru.css" rel="stylesheet" title="www" type="text/css">
+
+<script src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/ibmcommon.js" type="text/javascript">//</script><link title="IBM Search" href="http://www.ibm.com/search/opensearch/description.xml" type="application/opensearchdescription+xml" rel="search">
+<script src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/dynamicnav.js" type="text/javascript">//</script>
+
+<script language="JavaScript" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/urltactic.js" type="text/javascript"></script>
+<!-- Rating_START -->
+
+<script language="JavaScript" type="text/javascript">
+  // <![CDATA[
+
+ dwr = {};
+  dwr.clickhere = 'нажмите и проголосуйте';
+  dwr.starIntro = ''; 
+  dwr.stars = 'звездочки';
+  dwr.star = 'звездочка'; 
+  dwr.avgRatingOf = 'Средний показатель рейтинга';
+  dwr.youRated = 'Вы проголосовали за это';
+  dwr.avgRating = 'Средний показатель рейтинга';
+  dwr.basedOnVote = 'основанный на {1} голосе'; // {1} to be substitue by code
+  dwr.basedOnVotes = 'основанный на {1} голосов';
+  dwr.leftParen = '('; 
+  dwr.rightParen = ')'; 
+  dwr.space = ' '; 
+  dwr.yourRating = 'Ваш рейтинг';
+dwr.avgRating2 = 'Средний рейтинг из {1} голоса';
+dwr.avgRating3 = 'Средний рейтинг пользователя {1} звезда';
+dwr.rateThisArticle = 'Оценить эту статью';
+dwr.votes = '{1} голоса';
+dwr.vote = '{1} голос';
+dwr.submitErr = 'Ошибка: Невозможно оправить. Попробуйте, пожалуйста, еще раз.';
+dwr.noRatingErr = 'Ошибка: Выберите, пожалуйста, рейтинг и отправьте заново.';
+dwr.submit = 'Отправить';
+// ]]>
+</script>
+<!-- Rating_START -->
+<script language="JavaScript" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/showrating.js" type="text/javascript"></script>
+<style type="text/css">
+  .metavalue {
+  display: none;
+  }
+</style>
+<!-- Rating_END --><!-- RESERVED_HEADER_INCLUDE -->
+<script language="javascript" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/ajax1.js" type="text/javascript"></script>
+<script language="javascript" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/search_counter-maverick.js" type="text/javascript"></script>
+<script language="javascript" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/request_referer_capture-maverick.js" type="text/javascript"></script>
+<script language="JavaScript" type="text/javascript">
+ <!--
+ setDefaultQuery('');
+ //-->
+</script>
+<script language="JavaScript" type="text/javascript">
+ <!--
+ function openNewWindow(url,tar,arg){window.open(url,tar,arg);}
+ //-->
+</script>
+  <!-- Include file support -->
+  <script language="JavaScript" type="text/javascript">
+    (function($) {
+    jQuery.extend({
+    getInc: function(u,d){
+    if(u==null)return;
+    jQuery.ajax({
+    type: "GET",
+    url: u,
+    dataType: "text",
+    success: function(t) {
+    jQuery(d).html(t);
+    ibmCommon.initShowHide(jQuery(d).children()[0]);	
+    },
+    async: true
+    });
+    }
+    });
+    })(jQuery);
+  </script>
+<script charset="UTF-8" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/flash-detect_002.js" type="text/javascript" id="flashdetect"></script><script charset="UTF-8" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/ruru-utf8.js" type="text/javascript" id="mhMenu"></script><script charset="UTF-8" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/Controller" type="text/javascript" id="wiBundle"></script><link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/footnotify.css" type="text/css" rel="stylesheet"><link href="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/footnotify_firefox.css" type="text/css" rel="stylesheet"></head>
+
+<body id="ibm-com">
+<div id="ibm-top" class="ibm-landing-page">
+
+<!-- MASTHEAD_BEGIN -->
+<!-- MASTHEAD_BEGIN -->
+<div class="ibm-access"><a href="#ibm-content">Перейти к тексту</a></div>
+<div id="ibm-masthead-dw">
+  
+    <!-- TOP ROW -->    
+    <div id="dw-masthead-top-row">
+    	<ul id="ibm-mast-options-dw" class="ru">
+        	<li id="dw-mast-top-0"> 
+				<a class="" href="http://www.ibm.com/developerworks/dwwi/DWAuthRouter?m=loginpage&amp;lang=ru&amp;d=http%3A%2F%2Fwww.ibm.com%2Fdeveloperworks%2Fru%2Flibrary%2Fl-fuse%2F" title="">Войти (или Регистрация)</a>
+			</li>
+        	<li id="dw-mast-top-1" class="dw-mast-top-1-ru">
+        		<a href="#SELECTLANG">Русский</a><img class="dw-preload" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/arrow-down-active.gif" alt="" height="7" width="8">
+			</li>
+        	<li id="dw-mast-top-2" class="dw-mf-hide">
+        		<a href="#"><img src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/photo.gif" alt="PHOTO" class="dw-mast-profimg" height="20" width="20"> [userid]</a>
+        	</li>
+    		<li id="dw-mast-top-3">
+    			<a href="#"><img src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/ibm-smlogo.gif" alt="IBM®" height="16" width="44"></a>
+    		</li>
+		</ul>
+	</div>
+    
+    <!-- TOP ROW SLIDER -->
+    <div id="ibm-my-menu-dw">    
+        <div class="ibm-ribbon-pane-dw">
+            <div class="ibm-ribbon-section-dw">
+                <!-- Sign-in -->
+                <div class="dw-mast-columns">
+					<div class="dw-mast-col-1-1">
+						<div id="dw-mast-sso">
+						<!--	<div id="dw-mast-sso-reg">
+								<p>Если Вы еще не зарегистрировались в системе IBM Registration, то мы приносим извинения за неудобство и просим Вас выполнить это действие.  <a href="#" onclick="(function () {window.location='/developerworks/dwwi/DWAuthRouter?m=reg&amp;lang=ru&amp;d='+encodeURIComponent(location.href);})();">Зарегистрироваться сейчас</a></p>
+							</div>-->
+							<div id="signin_error_mf" class="no-display"></div>
+							<div id="dw-mast-sso-form">
+								<form id="sForm_mf" action="" method="post" name="sForm_name_mf" onsubmit="return false;">
+									<div id="dw-mast-sso-id">
+										<label for="ibmid_mf">IBM ID:</label>
+										<input class="" id="ibmid_mf" name="ibmid_name_mf" maxlength="100" onkeypress="handleEP(event,this.form,'mf');" type="text">
+									</div>
+									<div id="dw-mast-sso-pw">
+										<label for="pw_mf">Пароль:</label>
+										<input class="" id="pw_mf" value="" name="pw_name_mf" maxlength="100" onkeypress="handleEP(event,this.form,'mf');" type="password">
+									</div>
+									<div id="dw-mast-sso-target">
+										<p class="dw-mf-perm-box">
+											<input id="perm_mf" name="perm_name_mf" type="checkbox"><label for="perm_mf"> Запомнить меня.</label>
+										</p>											</div>
+									<div id="dw-mast-sso-terms">
+										<p class="dw-mast-sso-terms-ru">Нажимая <strong>Отправить</strong>, Вы принимаете <a href="http://www.ibm.com/developerworks/mydeveloperworks/terms?lang=ru">Условия использования</a> developerWorks.</p>
+									</div>
+									<div>
+										<input class="dw-mf-submit-btn-ru" name="ibm_submit_name_mf" value="Отправить" onclick="signin('mf');return false;" type="submit">
+									</div>
+								</form>
+							</div>
+							<div id="dw-mast-sso-update" class="dw-mast-sso-update-ru">
+								<div id="dw-mast-sso-update-id">
+									<ul>
+										<li><a class="ibm-forward-link" href="#" onclick="(function () {window.location='/developerworks/dwwi/DWAuthRouter?m=reg&amp;lang=ru_RU&amp;d='+encodeURIComponent(location.href);})();">Нужен IBM ID?</a></li>
+										
+									<li><a class="ibm-forward-link" href="http://www.ibm.com/developerworks/dwwi/jsp/WSHelp.jsp?lang=ru_RU">Забыли Ваш IBM ID?</a></li>
+									</ul>
+								</div>
+								<div id="dw-mast-sso-update-pw">
+								<ul class="dw-mf-pwupdate">
+									<li><a class="ibm-forward-link" href="#" onclick="(function () {window.location='https://www.ibm.com/account/profile?page=forgot&amp;lang=ru_RU&amp;appname=ibm&amp;required=null&amp;d='+encodeURIComponent(getAuthUrl())+'%3Fm%3Dloginpage%26lang%3Dru_RU%26d%3D'+encodeURIComponent(location.href);})();">Забыли Ваш пароль?</a></li>
+									<li><a class="ibm-forward-link" href="#" onclick="(function () {window.location='https://www.ibm.com/account/profile?page=chpw&amp;lang=ru_RU&amp;appname=ibm&amp;required=null&amp;d='+encodeURIComponent(location.href);})();">Изменить пароль</a></li>
+								</ul>
+									</div>
+							</div>
+							<div id="dw-mast-sso-text-ru">
+								<p>При первом входе в developerWorks для Вас будет создан <strong>профиль. Выберите информацию отображаемую в Вашем профиле — скрыть или отобразить поля можно в любой момент</strong>. </p>
+								<p class="dw-mf-secure-ru">Вся введенная информация защищена.</p>
+							</div>
+							<div class="dw-mast-close">
+								<ul>
+									<li><div class="dw-mast-close-sign-ru"><a href="#"><img src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/c.gif" alt="Закрыть [x]" border="0" height="10" width="20"></a></div></li>
+								</ul>
+							</div>							
+						</div>
+						
+						<div id="dw-mast-dname" class="dw-mf-hide">
+							<p>При первом входе в developerWorks для Вас будет создан профиль
+ и Вам нужно будет выбрать Отображаемое имя. Оно будет выводиться рядом с
+ контентом, опубликованным Вами в developerWorks.</p><p><strong>Отображаемое имя должно иметь длину от 3 символов до 31 символа</strong>.
+  Ваше Имя в системе должно быть уникальным. В качестве имени по 
+соображениям приватности нельзя использовать контактный e-mail.</p>
+							<div id="signin_dname_error_mf" class="no-display"></div>
+							<div id="dw-mast-dname-form">
+								<form id="dForm_mf" action="" method="post" name="dForm_name_mf" onsubmit="return false;">
+									<div id="dw-mast-dname-mf">
+										<label for="dname_mf">Отображаемое имя:</label>
+										<!-- <label for="dname_mf"><img id="ibmdname_img" alt="Display name" height="1" width="1" src="//dw1.s81c.com/i/c.gif" /></label> -->
+										<input id="dname_mf" name="dname_name_mf" maxlength="31" size="25" onkeypress="handleEP(event,this.form,'mf');" type="text">
+									</div>
+									<div id="dw-mast-dname-terms">
+										<p class="dw-mast-dname-terms-ru">Нажимая <strong>Отправить</strong>, Вы принимаете <a href="http://www.ibm.com/developerworks/mydeveloperworks/terms?lang=ru">Условия использования</a> developerWorks.</p>
+									</div>
+									<div>
+										<input class="dw-mf-submit-btn-ru" name="dname_submit_name_mf" value="Отправить" onclick="signin('mf');return false;" type="submit">
+									</div>
+								</form>								
+							</div>
+							<div id="dw-mast-dname-secure">
+								<p class="dw-mf-secure-ru">Вся введенная информация защищена.</p>
+							</div>
+							<div class="dw-mast-close">
+								<ul>
+									<li><div class="dw-mast-close-sign-ru"><a href="#"><img src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/c.gif" alt="Закрыть [x]" border="0" height="10" width="20"></a></div></li>
+								</ul>
+							</div>							
+						</div>
+						
+						<div id="dw-mast-auth" class="dw-mf-hide">
+							<div>
+								<h2>My developerWorks:</h2>
+								<ul>
+									<li><a id="dw-mast-top-0-0" href="http://www.ibm.com/developerworks/mydeveloperworks/profiles/html/myProfileView.do?lang=ru">Мой профайл</a></li>
+									<li><a href="http://www.ibm.com/developerworks/mydeveloperworks/homepage?lang=ru">Моя главная страница</a></li>
+									<li><a href="http://www.ibm.com/developerworks/mydeveloperworks/groups/service/html/mycommunities?lang=ru">Мои группы</a></li>
+								</ul>     
+							</div>
+							<div id="dw-mast-notify" class="dw-mf-hide">
+								<h2>Сообщения:</h2>
+								<ul>
+									<li><a id="new_notify" href="http://www.ibm.com/developerworks/mydeveloperworks/homepage?lang=ru">{[num_notify] новых уведомлений}([num_notify] новых уведомлений)</a></li>
+									<li><a id="new_invite" href="http://www.ibm.com/developerworks/mydeveloperworks/profiles/html/wc.do?action=in&amp;requireAuth=true&amp;widgetId=friends&amp;lang=[lang]">{[num_invite] запрос}([num_invite] запрос)</a></li>  
+								</ul>
+							</div>
+							<div class="dw-mast-more">
+								<ul class="ibm-link-list">
+									<li><a class="dw-more-link" href="#" onclick="signOut(); return false;"><strong>Выйти</strong></a></li>
+								</ul>
+							</div>
+							<div class="dw-mast-close">
+								<ul>
+									<li><div class="dw-mast-close-sign"><a href="#"><img src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/c.gif" alt="Закрыть [x]" border="0" height="10" width="20"></a></div></li>
+								</ul>
+							</div>							
+						</div>
+						
+					</div>                	
+ 
+                </div>
+                <!-- Site selector --> 
+				<div class="dw-mast-columns">
+					<div class="dw-mast-col-2-1">
+						<h2>Выбрать язык:</h2>
+						<ul>
+							<li><a id="dw-mast-top-1-0" href="http://www.ibm.com/developerworks/">English</a></li>
+							<li><a href="http://www.ibm.com/developerworks/cn/">中文</a></li>
+							<li><a href="http://www.ibm.com/developerworks/jp/">日本語</a></li>
+							<li><a href="http://www.ibm.com/developerworks/ru/">Русский</a></li>
+						</ul>
+					</div>
+					<div class="dw-mast-col-2-2">
+						<ul>
+							<li><a href="http://www.ibm.com/developerworks/br/">Português (Brasil)</a></li>
+							<li><a href="http://www.ibm.com/developerworks/ssa/">Español</a></li>
+							<li><a href="http://www.ibm.com/developerworks/vn/">Việt</a></li>
+						</ul>
+					</div>
+					<div class="dw-mast-close">
+						<ul>
+							<li><div class="dw-mast-close-lang"><a href="#"><img src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/c.gif" alt="Закрыть [x]" border="0" height="10" width="20"></a></div></li>
+						</ul>
+					</div>							
+				</div>  
+            	<div class="dw-mast-columns"><!-- Authenticated --></div>
+            	<!-- IBM -->
+            	<div class="dw-mast-columns">
+            		<div class="dw-mast-col-2-1">
+            			<ul>
+            				<li><a id="dw-mast-top-3-0" href="http://www.ibm.com/ru/ru/">Домашняя страница IBM</a></li>
+            				<li><a href="http://www.ibm.com/solutions/ru/ru/">Pешения</a></li>
+            				<li><a href="http://www.ibm.com/software/ru/">Программное обеспечение</a></li>
+            				<li><a href="http://www.ibm.com/technologyservices/ru/ru/">Сервис ПО</a></li>
+            			</ul>
+            		</div>
+            		<div class="dw-mast-col-2-2 dw-mast-ibm">
+            			<ul>
+            				<li><a href="http://www.ibm.com/support/ru/ru/">Поддержка</a></li>
+            				<li><a href="http://www.ibm.com/support/documentation/ru/ru/">Документация</a></li>
+            				<li><a href="http://www.ibm.com/developerworks/ru/doc/">Библиотека документов</a></li>
+            			</ul>
+            		</div>
+            		<div class="dw-mast-close">
+            			<ul>
+            				<li><div class="dw-mast-close-ibm"><a href="#"><img src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/c.gif" alt="Закрыть [x]" border="0" height="10" width="20"></a></div></li>
+            			</ul>
+            		</div>
+            	</div>       	
+            </div>
+       	
+        </div>
+    </div>
+
+    <!-- BOTTOM ROW -->
+    <div id="ibm-universal-nav-dw">
+        <ul id="ibm-unav-links-dw">
+            <li id="ibm-unav-home-dwlogo">
+				<a href="http://www.ibm.com/developerworks/ru/"><img src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/dw-wordmark.gif" alt="developerWorks®" height="32" width="218"></a>
+            </li>
+        </ul>
+        <!-- Links below are displayed inline for prototype; need to determine final placement -->
+    	<ul id="ibm-menu-links-dw" class="ibm-menu-links-dw-ru">
+        	<li id="dw-mast-nav-0"><a href="http://www.ibm.com/developerworks/ru/topics/">Технические материалы</a></li>
+        	<li id="dw-mast-nav-1"><a href="http://www.ibm.com/developerworks/downloads/">Пробное ПО</a></li>
+        	<li id="dw-mast-nav-2"><a href="https://www.ibm.com/developerworks/community/?lang=ru">Сообщество</a></li>
+         </ul>
+			<form id="ibm-search-form" action="//www.ibm.com/search/csass/search/" method="get" name="form1">
+				<input name="sn" value="dw" type="hidden">
+				<input name="lang" value="ru" type="hidden">
+				<input name="cc" value="RU" type="hidden">
+				<input name="en" value="utf" type="hidden">
+				<input name="hpp" value="20" type="hidden">
+				<input name="dws" value="rudw" type="hidden">
+			    <input name="lo" value="ru" type="hidden">
+				<p>
+				<label for="q"><img alt="Искать:" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/c.gif" height="1" width="1"></label>
+					<input value="Поиск developerWorks" name="q" maxlength="100" id="q" type="text">
+					<input id="ibm-search" class="ibm-btn-search ibm-btn-search-ru" name="Search" value="Поиск" type="submit">
+				</p>
+			</form>
+    </div>
+    
+    
+    <!-- BOTTOM ROW SLIDER -->
+    <div id="ibm-common-menu-dw">
+ 
+    	<div class="ibm-ribbon-pane-dw dw-ribbon-pane-en">
+            <div class="ibm-ribbon-section-dw">
+				<!-- Technical topics category -->
+                <div class="dw-mast-columns">
+					<div class="dw-mast-col-4-1">
+						<h2><a id="dw-mast-nav-0-0" href="http://www.ibm.com/developerworks/ru/topics/">Технические материалы</a></h2>
+						<ul>
+							<li><a href="http://www.ibm.com/developerworks/ru/aix/">AIX и UNIX</a></li>
+							<li><a href="http://www.ibm.com/developerworks/ru/data/">Information management</a></li>
+							<li><a href="http://www.ibm.com/developerworks/ru/java/">Технология Java</a></li>
+							<li><a href="http://www.ibm.com/developerworks/ru/linux/">Linux</a></li>
+							<li><a href="http://www.ibm.com/developerworks/ru/lotus/">Lotus</a></li>
+						</ul>     
+                    </div>
+                	<div class="dw-mast-col-4-2">
+		
+						<ul>
+						    <li><a href="http://www.ibm.com/developerworks/ru/mobile/">Мобильные приложения</a></li>
+							<li><a href="http://www.ibm.com/developerworks/ru/opensource/">Open source</a></li>
+							<li><a href="http://www.ibm.com/developerworks/ru/rational/">Rational</a></li>
+							<li><a href="http://www.ibm.com/developerworks/ru/webservices/">SOA и web-сервисы</a></li>
+							<li><a href="http://www.ibm.com/developerworks/ru/websphere/">WebSphere</a></li> 
+						</ul>
+                	</div>
+                    <div class="dw-mast-col-4-3">
+		
+						<ul>
+							<li><a href="http://www.ibm.com/developerworks/ru/xml/">XML</a></li>     
+						</ul>
+                    </div>
+                	<div class="dw-mast-col-4-4">
+	
+					<ul>
+						<li><a href="http://www.ibm.com/developerworks/ru/library/"><strong>Техническая библиотека</strong></a></li>
+						<li class="dw-mast-newline"><a href="http://www.ibm.com/developerworks/ru/products/"><strong>Программные продукты для <br>разработчиков от A до Z</strong></a></li>
+					</ul> 
+  
+                    </div>
+                	<div class="dw-mast-close">
+                		<ul>
+                			<li><div class="dw-mast-close-tech"><a href="#"><img src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/c.gif" alt="Закрыть [x]" border="0" height="10" width="20"></a></div></li>
+                		</ul>
+                	</div>
+                </div>
+				<!-- Evaluation software category -->
+                <div class="dw-mast-columns">
+					<div class="dw-mast-col-2-1">
+						<h2><a id="dw-mast-nav-1-0" href="http://www.ibm.com/developerworks/downloads/">Пробное ПО (Английский)</a></h2>
+						<ul>
+							<li class="dw-mast-newline"><a href="http://www.ibm.com/developerworks/downloads/#data">Information management <br> (Английский)</a></li>
+							<li><a href="http://www.ibm.com/developerworks/downloads/#lotus">Lotus (Английский)</a></li>
+							<li><a href="http://www.ibm.com/developerworks/downloads/#rational">Rational (Английский)</a></li>
+						</ul>            
+					</div>
+                	<div class="dw-mast-col-2-2">
+                		<ul>
+                			<li><a href="http://www.ibm.com/developerworks/downloads/#tivoli">Tivoli (Английский)</a></li>
+                			<li><a href="http://www.ibm.com/developerworks/downloads/#websphere">WebSphere (Английский)</a></li>
+                			<li><a href="http://www.ibm.com/developerworks/downloads/#more">More IBM products (Английский)</a></li>
+                		</ul>            
+                	</div>
+                	<div class="dw-mast-close">
+                		<ul>
+                			<li><div class="dw-mast-close-eval-ru"><a href="#"><img src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/c.gif" alt="Закрыть [x]" border="0" height="10" width="20"></a></div></li>
+                		</ul>
+                	</div>
+                </div>
+				<!-- Community category -->
+                <div class="dw-mast-columns">
+					<div class="dw-mast-col-2-1">
+						<h2><a id="dw-mast-nav-2-0" href="http://www.ibm.com/developerworks/community/?lang=ru">Сообщество</a></h2>
+						
+						<ul>
+							<li><a href="https://www.ibm.com/developerworks/community/homepage/?lang=ru">В начало</a></li>
+							<li><a href="https://www.ibm.com/developerworks/community/profiles/home.do?lang=ru">Профайлы</a></li>
+							<li><a href="https://www.ibm.com/developerworks/community/groups/service/html/allcommunities?lang=ru">Группы</a></li>
+							<li><a href="https://www.ibm.com/developerworks/community/blogs/?lang=ru">Блоги</a></li>
+							<li><a href="https://www.ibm.com/developerworks/community/bookmarks/html?lang=ru">Закладки</a></li>
+						</ul>     					    
+   
+                    </div>
+					<div class="dw-mast-col-2-2">
+						<ul>
+							<li><a href="http://www.ibm.com/developerworks/forums/category.jspa?categoryID=132">Форумы</a></li>
+							<li><a href="https://www.ibm.com/developerworks/mydeveloperworks/wikis/home?lang=ru">Вики</a></li>
+							<li><a href="https://www.ibm.com/developerworks/community/files/app?lang=ru">Файлы</a></li>
+							<li><a href="https://www.ibm.com/developerworks/community/activities/service/html/mainpage?lang=ru#dashboard,myactivities">Операции</a></li>
+						
+						</ul>
+                    </div>
+ 
+                	<div class="dw-mast-close">
+                		<ul>
+                			<li><div class="dw-mast-close-comm-ru"><a href="#"><img src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/c.gif" alt="Закрыть [x]" border="0" height="10" width="20"></a></div></li>
+                		</ul>
+                	</div>
+                </div>
+				<!-- Events category -->
+  <!--              <div class="dw-mast-columns">
+					<div class="dw-mast-col-1-1">
+					<!-\-	<ul>
+						<li><a id="dw-mast-nav-3-0" href="">Briefings</a></li>
+							<li><a href="">Webcasts</a></li>
+							<li><a href="">Find events (briefings, webcasts, conferences...)</a></li>
+						</ul>        -\->    
+                    </div>
+                    <div class="dw-mast-more">
+					<!-\-	<ul class="ibm-link-list">
+							<li><a class="dw-more-link" href=""><strong>Подробнее о Событиях</strong></a></li>
+						</ul> -\->
+                    </div>
+                    <div class="dw-mast-close">
+						<ul>
+							<li><a href="#">Закрыть [x]</a></li>
+						</ul>
+                    </div>
+				</div>-->
+            </div>
+        </div>
+ 
+    </div>
+    
+</div>
+<div id="fdiv" class="ibm-access"><embed type="application/x-shockwave-flash" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/connect.swf" id="sflash" name="sflash" quality="high" menu="false" wmode="window" movie="https://www.ibm.com/developerworks/js/dw-mf/connect.swf" swliveconnect="true" allowscriptaccess="always" height="1" width="1"></div>
+<!-- MASTHEAD_END --><!-- MASTHEAD_END -->
+
+<div id="ibm-pcon">
+
+<!-- CONTENT_BEGIN -->
+<div id="ibm-content">
+
+<!-- Navigation_Trail_BEGIN -->
+<!-- &nbsp; -->
+        <div id="ibm-content-head"><ul id="ibm-navigation-trail"><li class="ibm-first"><a href="http://www.ibm.com/developerworks/ru/">developerWorks Россия</a></li><li><a href="http://www.ibm.com/developerworks/ru/linux/">Linux</a></li><li><a href="http://www.ibm.com/developerworks/ru/views/linux/libraryview.jsp">Статьи</a></li></ul></div>
+<!-- Navigation_Trail_END -->
+
+<!-- dW_Summary Area_START -->
+<div id="dw-summary-article">
+
+<div class="dw-content-head">
+<h1>Разработка собственной файловой системы с помощью FUSE</h1><p><em>Программирование ядра не требуется</em></p>
+</div>
+
+<div class="ibm-container-body ibm-two-column">
+
+<div class="ibm-column ibm-first">
+<div class="author"><a title="" class="dwauthor" rel="#authortip1" href="#author1">Сумит Сингх</a>, инженер-программист, IBM</div><div style="display: none;" id="authortip1" class="dwauthor-onload-state ibm-no-print">Сумит
+ Сингх (Sumit Singh) работает инженером-программистом в группе 
+корпоративных файловых систем IBM. Его основная работа состоит в 
+обеспечении L3-поддержки для AFS.</div>
+<p></p>
+  <p><strong>Описание:</strong>&nbsp; С помощью Filesystem in Userspace 
+(FUSE) вы можете разработать файловую систему в пространстве 
+пользователя без знания внутреннего устройства файловой системы или 
+изучения программирования модулей ядра. Прочтите это простое, пошаговое 
+руководство по установке, настройке и разрешению FUSE и AFS, для того 
+чтобы вы могли создать вашу собственную полностью функциональную 
+файловую систему в пользовательской области на Linux®®</p>
+
+
+</div>
+
+<div class="ibm-column ibm-second">
+
+<p class="leading"><b>Дата:</b>&nbsp; 28.02.2006
+  
+<br><b>Уровень сложности: </b>&nbsp;простой
+    
+
+<br><strong>Активность:</strong>&nbsp; 8138 просмотров
+ <br><strong>Комментарии:</strong> &nbsp; <span id="nCmts">0&nbsp;(<a class="dw-view-comment" href="#icomments">Посмотреть</a>&nbsp;|&nbsp;<a onclick="showSignIn();return false;" href="#">Добавить комментарий</a> - Войти)</span> 
+  <!-- Rating_Area_Begin -->
+  </p><div id="art-rating-summary"><img alt="Средний показатель рейтинга 4 звездочки основанный на 16 голосов" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/stars120x20-4b.jpg" class="dw-avg-rating"> Средний показатель рейтинга (16 голоса)<br><a class="dw-view-comment" href="#iratings">Оценить эту статью</a></div>
+  <!-- Rating_Area_End -->
+  <br>
+<p></p>
+</div>
+
+</div>
+</div>
+<!-- dW_Summary_Area_END -->
+
+<!-- CONTENT_BODY -->
+<div id="ibm-content-body">
+
+<!-- MAIN_COLUMN_BEGIN -->
+<div id="ibm-content-main">
+
+<!-- Related_Searches_Area_And_Overlays_Begin -->
+
+<!-- MAIN_COLUMN_CONTAINER_BEGIN -->
+<div class="ibm-container">
+
+<!-- MAIN_COLUMN_CONTENT_BEGIN -->
+<p>Файловая система представляет собой способ хранения и организации 
+компьютерных файлов и каталогов, а также данных, которые в них 
+содержатся, облегчающий поиск и доступ к этим данным. Если вы 
+используете компьютер, вероятнее всего, вы работаете с файловыми 
+системами более чем одного типа. Файловая система может предоставлять 
+расширенные возможности. Она может быть написана как надстройка над 
+существующей файловой системой для управления ее данными и предоставлять
+ расширенную, функционально полную файловую систему (например, 
+cvsfs-fuse, которая обеспечивает интерфейс файловой системы для CVS, или
+ файловая система Wayback, которая обеспечивает механизм резервного 
+копирования для хранения старых копий данных).</p>
+
+<p>До появления файловых систем в пространстве пользователя их 
+разработка была прерогативой разработчиков ядра. Создание файловой 
+системы требовало знаний программирования ядра и технологий ядра 
+(например, vfs), а процесс отладки требовал опыта работы с C и C++. Но и
+ другие разработчики нуждались в управлении файловой системой для 
+добавления персональных особенностей (таких как история или 
+предупреждающее кэширование) и расширений.</p>
+
+<p><a name="N10057"><span class="atitle">Введение в FUSE</span></a></p>
+
+<p>FUSE позволяет разрабатывать полностью функциональную файловую 
+систему, которая имеет простую библиотеку API, может использоваться 
+непривилегированными пользователями и обеспечивает защищенную 
+реализацию. И вдобавок FUSE обладает доказанной стабильностью.</p>
+
+<p>При помощи FUSE вы можете разработать файловую систему в виде 
+исполняемых двоичных файлов, связанных с библиотеками FUSE; другими 
+словами, эта интегрированная файловая система не требует от вас изучения
+ внутреннего устройства файловой системы или программирования модулей 
+ядра.</p>
+
+<p>Что касается файловых систем, то файловая система в пространстве 
+пользователя не является чем-то новым. Приведем несколько примеров 
+коммерческих и академических реализаций таких систем:</p>
+
+<ul>
+<li>LUFS - гибридная файловая система в пространстве пользователя, 
+поддерживающая неопределенное число файловых систем прозрачно для любого
+ приложения. Она состоит из модуля ядра и демона, работающего в 
+пространстве пользователя. По существу, он делегирует большинство 
+VFS-вызовов специализированному демону, который их обрабатывает.</li>
+<li>UserFS позволяет пользовательским процессам быть смонтированными как
+ нормальные файловые системы. Этот экспериментальный прототип 
+предоставляет программу ftpfs, которая организует анонимный FTP с 
+интерфейсом файловой системы.</li>
+<li>Ufo Project - глобальная файловая система для Solaris, которая 
+позволяет пользователям работать с удаленными файлами так, как будто они
+ являются локальными.</li>
+<li>OpenAFS - это версия с открытыми исходными кодами файловой системы Andrew FileSystem.</li>
+<li>CIFS - Common Internet FileSystem.</li>
+</ul>
+
+<p>В отличие от этих коммерческих и академических примеров FUSE 
+переносит возможности этих проектов файловых систем в Linux. Поскольку 
+FUSE использует исполняемые файлы (вместо, например, разделяемых 
+объектов, используемых в LUFS), облегчается отладка и разработка. FUSE 
+работает с обеими версиями ядра (2.4.x и 2.6.x) и теперь поддерживает 
+Java™-связывание, т.е. вы не ограничены программированием файловой 
+системы в C и C++ (в разделе "<a href="#resources">Ресурсы</a>" приведены ссылки на файловые системы, использующие FUSE).</p>
+
+<p>Для создания файловой системы в FUSE, вы должны установить модуль ядра FUSE, а затем использовать библиотеку FUSE и набор API.</p>
+
+<div class="ibm-alternate-rule"><hr></div><p class="ibm-ind-link ibm-back-to-top"><a href="#ibm-pcon" class="ibm-anchor-up-link">В начало</a></p><p><a name="N10084"><span class="atitle">Распаковка FUSE</span></a></p>
+
+<p>
+Для разработки файловой системы загрузите, прежде всего, исходный код FUSE (см. раздел "<a href="#resources">Ресурсы</a>") и разархивируйте пакет: <code>tar -zxvf fuse-2.2.tar.gz</code>. При этом создастся каталог FUSE с исходным кодом. Содержимое каталога fuse-2.2:
+</p>
+
+<ul>
+<li>
+<strong>./doc</strong> содержит относящуюся к FUSE документацию. В настоящее время здесь находится только один файл how-fuse-works.
+</li>
+<li>
+<strong>./kernel</strong> содержит исходный код модуля ядра FUSE 
+(который, естественно, вы не должны знать для разработки файловой 
+системы с помощью FUSE).
+</li>
+<li>
+<strong>./include</strong> содержит заголовочные файлы FUSE API, необходимые для создания файловой системы. Сейчас вы должны знать только fuse.h.
+</li>
+<li>
+<strong>./lib</strong> содержит исходный код для создания библиотек 
+FUSE, которые вы будете связывать с вашими двоичными файлами для 
+создания файловой системы.
+</li>
+<li>
+<strong>./util</strong> содержит исходный код для служебной библиотеки FUSE.
+</li>
+<li>
+<strong>./example</strong>, естественно, содержит примеры: файловые системы fusexmp.null и hello.</li>
+</ul>
+
+<div class="ibm-alternate-rule"><hr></div><p class="ibm-ind-link ibm-back-to-top"><a href="#ibm-pcon" class="ibm-anchor-up-link">В начало</a></p><p><a name="N100BB"><span class="atitle">Компоновка и установка FUSE</span></a></p>
+
+<ol>
+<li>Выполните сценарий configure из каталога fuse-2.2: <code>./configure</code>. При этом будут созданы необходимые файлы makefile и др.<br><br></li>
+
+<li>Выполните сценарий <code>./make</code> для компоновки библиотек, 
+двоичных файлов и модуля ядра. Проверьте каталог kernel на наличие файла
+ ./kernel/fuse.ko - это файл модуля ядра. Также проверьте каталог lib - в
+ нем должны находиться файлы fuse.o, mount.o и helper.o.<br><br></li>
+
+<li>Выполните сценарий <code>./make install</code> для завершения установки FUSE. 
+<br><br>
+<strong>Альтернативный вариант</strong>: пропустите этот шаг, если желаете установить модуль в ядре самостоятельно при помощи <code>insmod</code>. Например: <code>/usr/local/sbin/insmod ./kernel/fuse.ko</code> или <code>/sbin/insmod ./kernel/fuse.ko</code>. Для установки необходимого модуля нужно иметь привилегии пользователя root.</li>
+</ol>
+
+<p>
+Если хотите, вы можете выполнить описанные выше шаги за одну команду - в каталоге fuse-2.2 выполните <code>./configure; make; make install;</code>.
+<br><br>
+<strong>Важно</strong>: При компоновке FUSE вы должны иметь доступ к 
+заголовочным файлам ядра или исходному коду. Проще говоря, убедитесь в 
+наличии исходного кода ядра в каталоге /usr/src/.
+</p>
+
+<div class="ibm-alternate-rule"><hr></div><p class="ibm-ind-link ibm-back-to-top"><a href="#ibm-pcon" class="ibm-anchor-up-link">В начало</a></p><p><a name="N100FB"><span class="atitle">Настройка файловой системы</span></a></p>
+
+<p>
+Теперь давайте создадим файловую систему, для того чтобы вы могли 
+обращаться к AFS-разделу последней версии Linux, используя старое ядро 
+Linux. У вас будут работать два процесса: серверный процесс на старом 
+ядре Linux и FUSE-клиент на новейшем ядре Linux. При поступлении запроса
+ к FUSE-клиенту, он связывается с удаленным серверным процессом. Для 
+взаимодействия эта файловая система использует RX RPC-код, являющийся 
+частью AFS, поэтому вы должны скомпоновать OpenAFS (обзор этой файловой 
+системы AFS представлен на рисунке 1).</p>
+
+      
+        <br><a name="N10106"><b>Рисунок 1. Обзор файловой системы AFS-FUSE</b></a><br>
+        <img alt="Рисунок 1. Обзор файловой системы AFS-FUSE" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/image1.gif" height="357" width="572">
+      <br>
+
+<p><a name="N10114"><span class="smalltitle">Компоновка OpenAFS</span></a></p>
+
+<ol>
+
+<li>Загрузите исходные файлы OpenAFS для Linux и разархивируйте их. 
+<p>В каталоге с распакованными исходными файлами выполните команду <code>./make ./configure --enable-transarc-paths</code>. Если <code>./configure</code> не может понять при компоновке <code>sysname</code>, используйте параметр <code>--with-afs-sysname</code> с соответствующим <code>sysname</code>.</p>
+<p>Для компоновки на ядре Linux 2.4 используйте следующую команду: <code>./configure --enable transarc-paths --with-afs-sysname=i386_linux24</code>.</p>
+</li>
+
+<li>Выполните команду <code>./make</code> и затем <code>./make dest</code>. Следите за всеми ошибками во время компоновки.
+
+<p>Если компоновка прошла успешно, ваше дерево исходных файлов AFS 
+готово к работе. На этом этапе вы должны подготовить каталог для 
+разработки с названием afsfuse. В этом каталоге создайте еще два 
+каталога:
+</p>
+
+<ul>
+<li>Каталог <strong>include</strong>, который будет содержать включаемые заголовочные файлы из OpenAFS и FUSE.</li>
+<li>Каталог <strong>lib</strong>, который будет содержать библиотеки из OpenAFS и FUSE.</li>
+</ul>
+</li>
+
+<li>Скопируйте заголовочные файлы и библиотеки. 
+<p>Сначала скопируйте заголовочные файлы AFS из каталога OpenAFS, 
+выполнив копирование всех каталогов и файлов из 
+dest\i386_linux24\include в каталог include. Затем скопируйте в этот 
+каталог заголовочные файлы FUSE из каталогов fuse-2.2. Повторите эти 
+действия для библиотек в каталоге lib.
+</p>
+</li>
+
+<li>Создайте структуру приложения.
+<p>Вам необходимы два набора файлов для двух наборов процессов. Назовите файлы клиентского процесса, используя схему <strong>afsfuse_client.*</strong>; назовите файлы серверного процесса <strong>afsfuse_server.*</strong>.
+</p>
+<p>Таким образом, вы будете иметь файл afsfuse_client.c, который будет 
+содержать код процесса FUSE, файл afsfuse_server.c, который будет 
+содержать серверный код для процесса, работающего на удаленной системе, 
+файл makefile и файл rxgen для создания RPC-заголовка (например, 
+afsfuse.xg).
+</p>
+<p>Файл afsfuse_client.c будет создавать код процесса afsfuse_client, 
+который будет вызываться файловой системой FUSE для создания вашей 
+файловой системы (используйте пример fuse-2.2/example/fusexmp.c для 
+создания этого файла).
+</p>
+</li>
+
+</ol>
+
+<p><a name="N10172"><span class="smalltitle">Определение необходимых функций</span></a></p>
+
+<p>
+Для создания файловой системы с FUSE, вы должны объявить переменную структуры с типом <code>fuse_operations</code> и передать ее в функцию <code>fuse_main</code>. Структура <code>fuse_operations</code>
+ передает указатель на функции, которые будут вызываться при 
+необходимости выполнить соответствующее действие. В листинге 1 приведена
+ структура <code>fuse_operations</code>.</p>
+
+<br><a name="N1018E"><b>Листинг 1. Необходимые функции в структуре fuse_operation</b></a><br><table border="0" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="code-outline"><pre class="displaycode">
+struct fuse_operations {
+    int (*getattr) (const char *, struct stat *);
+    int (*readlink) (const char *, char *, size_t);
+    int (*getdir) (const char *, fuse_dirh_t, fuse_dirfil_t);
+    int (*mknod) (const char *, mode_t, dev_t);
+    int (*mkdir) (const char *, mode_t);
+    int (*unlink) (const char *);
+    int (*rmdir) (const char *);
+    int (*symlink) (const char *, const char *);
+    int (*rename) (const char *, const char *);
+    int (*link) (const char *, const char *);
+    int (*chmod) (const char *, mode_t);
+    int (*chown) (const char *, uid_t, gid_t);
+    int (*truncate) (const char *, off_t);
+    int (*utime) (const char *, struct utimbuf *);
+    int (*open) (const char *, struct fuse_file_info *);
+    int (*read) (const char *, char *, 
+    size_t, off_t, struct fuse_file_info *);
+    int (*write) (const char *, const 
+    char *, size_t, off_t,struct fuse_file_info *);
+    int (*statfs) (const char *, struct statfs *);
+    int (*flush) (const char *, struct fuse_file_info *);
+    int (*release) (const char *, struct fuse_file_info *);
+    int (*fsync) (const char *, int, struct fuse_file_info *);
+    int (*setxattr) (const char *, const char *, const char *, size_t, int);
+    int (*getxattr) (const char *, const char *, char *, size_t);
+    int (*listxattr) (const char *, char *, size_t);
+    int (*removexattr) (const char *, const char *);
+};
+</pre></td></tr></tbody></table><br>
+
+<p>Ни одна из этих операций не является абсолютно необходимой, но многие
+ нужны для корректной работы файловой системы. Вы можете реализовать 
+полнофункциональную файловую систему с методами специального назначения <code>.flush</code>, <code>.release</code> или <code>.fsync</code> (в этой статье не рассматривается ни одна из функций <code>xattr</code>). В листинге 1 показаны следующие функции:</p>
+
+<ul>
+<li>
+<code>getattr: int (*getattr) (const char *, struct stat *);</code><br>
+Аналогична функции <code>stat()</code>. Поля <code>st_dev</code> и <code>st_blksize</code> игнорируются. Поле <code>st_ino</code> игнорируется, если не предоставляется параметр монтирования <code>use_ino</code>.</li>
+
+<li><code>readlink: int (*readlink) (const char *, char *, size_t);</code><br>
+Читает объект символической ссылки. Буфер должен быть заполнен строкой, 
+заканчивающейся нулем. Аргумент размер буфера включает место для символа
+ null. Если linkname не помещается в буфер, он должен быть обрезан. При 
+успешном выполнении функции возвращаемое значение равно "0".</li>
+
+<li><code>getdir: int (*getdir) (const char *, fuse_dirh_t, fuse_dirfil_t);</code><br>
+Читает содержимое каталога. Эта операция выполняет последовательно функции <code>opendir()</code>, <code>readdir()</code>, ..., <code>closedir()</code> в одном вызове. Для каждого элемента каталога должна быть выполнена функция <code>filldir()</code>.</li>
+
+<li><code>mknod: int (*mknod) (const char *, mode_t, dev_t);</code><br>
+Создает узел file. Нет операции <code>create()</code>; <code>mknod()</code> будет вызываться для создания узлов, отличных от каталога и символических ссылок.</li>
+
+<li><code>mkdir: int (*mkdir) (const char *, mode_t);</code><br>
+<code>rmdir: int (*rmdir) (const char *);</code><br>
+Создают и удаляют каталог соответственно.</li>
+
+<li><code>unlink: int (*unlink) (const char *);</code><br>
+<code>rename: int (*rename) (const char *, const char *);</code><br>
+Удаляют и переименовывают файл соответственно.</li>
+
+<li><code>symlink: int (*symlink) (const char *, const char *);</code><br>
+Создает символическую ссылку.</li>
+
+<li><code>link: int (*link) (const char *, const char *);</code><br>
+Создает жесткую ссылку на файл.</li>
+
+<li><code>chmod: int (*chmod) (const char *, mode_t);</code><br>
+<code>chown: int (*chown) (const char *, uid_t, gid_t);</code><br>
+<code>truncate: int (*truncate) (const char *, off_t);</code><br>
+<code>utime: int (*utime) (const char *, struct utimbuf *);</code><br>
+Изменение битов полномочий, пользователя и группы, размера и времени доступа/модификации файла соответственно.</li>
+
+<li><code>open: int (*open) (const char *, struct fuse_file_info *);</code><br>
+Операция открытия файла. В <code>open()</code> не передаются флаги создания и усечения (<code>O_CREAT</code>, <code>O_EXCL</code>, <code>O_TRUNC</code>). Проверяет, разрешена ли операция для данных флагов. <code>open()</code> может также (необязательно) возвратить произвольный <code>filehandle</code> в структуре <code>fuse_file_info</code>, который будет передан всем файловым операций.</li>
+
+<li><code>read: int (*read) (const char *, char *, size_t, off_t, struct fuse_file_info *);</code><br>
+Чтение данных из открытого файла. <code>read()</code> должен возвратить 
+указанное количество байтов за исключением EOF или ошибки; в противном 
+случае оставшиеся данные будут замещены нулями. Исключением из этого 
+правила является ситуация, когда указан параметр монтирования <code>direct_io</code>; в этом случае возвращаемое значение системного вызова <code>read()</code> будет отражать возвращаемое значение этой операции.</li>
+
+<li><code>write: int (*write) (const char *, const char *, size_t, off_t, struct fuse_file_info *);</code><br>
+Запись данных в открытый файл. <code>write()</code> должен возвратить 
+указанное количество байтов за исключением возврата ошибки. Исключением 
+из этого правила является ситуация, когда указан параметр монтирования <code>direct_io</code> (аналогично операции <code>read()</code>).</li>
+
+<li><code>statfs: int (*statfs) (const char *, struct statfs *);</code><br>
+Получение статистики файловой системы. Поля <code>f_type</code> и <code>f_fsid</code> игнорируются.</li>
+
+<li><code>flush: int (*flush) (const char *, struct fuse_file_info *);</code><br>
+Сброс на диск кэшированных данных. Эта функция не эквивалентна <code>fsync()</code> - это не запрос на синхронизацию измененных данных. <code>flush()</code> вызывается при каждой операции <code>close()</code> дескриптора файла, то есть, если файловая система хочет возвратить ошибки записи в <code>close()</code>,
+ и файл кэшировал измененные данные, это хорошее место для 
+восстановления измененных данных и возврата каких-либо ошибок. Поскольку
+ многие приложения игнорируют ошибки в <code>close()</code>, это не всегда приносит пользу.</li>
+</ul>
+
+<p><strong>Примечание</strong>: Метод <code>flush()</code> может быть вызван более одного раза для каждой операции <code>open()</code>. Это происходит тогда, когда один дескриптор файла ссылается на открытый файл через вызовы <code>dup()</code>, <code>dup2()</code> или <code>fork()</code>.
+ Невозможно определить, является ли сброс последним, поэтому каждый 
+сброс должен быть обработан одинаково. Множественные последовательности 
+записи-сброса относительно редки, поэтому это не должно быть проблемой.</p>
+
+<ul>
+<li><code>release: int (*release) (const char *, struct fuse_file_info *);</code><br>
+Освобождение открытого файла. <code>release()</code> вызывается тогда, 
+когда больше нет ссылок на открытый файл - все дескрипторы файла 
+закрыты, и все отображения памяти не назначены. Для каждого вызова <code>open()</code> имеется ровно один вызов <code>release()</code> с теми же флагами и дескриптором файла. Можно открыть файл более одного раза, тогда будет считаться только последняя функция <code>release</code>, и не будет больше операций чтения/записи с файлом. Возвращаемое значение функции <code>release</code> игнорируется.</li>
+
+<li><code>fsync: int (*fsync) (const char *, int, struct fuse_file_info *);</code><br>
+Синхронизация содержимого файла. Если параметр <code>datasync</code> не равен нулю, только пользовательские данные должны быть сброшены, а не метаданные.</li>
+
+<li><code>setxattr: int (*setxattr) (const char *, const char *, const char *, size_t, int);</code><br>
+<code>getxattr: int (*getxattr) (const char *, const char *, char *, size_t);</code><br>
+<code>listxattr: int (*listxattr) (const char *, char *, size_t);</code><br>
+<code>removexattr: int (*removexattr) (const char *, const char *);</code><br>
+      Установка, получение, перечисление и удаление расширенных атрибутов соответственно.</li>
+</ul>
+
+<p><a name="N102FB"><span class="smalltitle">Получаемая файловая система</span></a></p>
+
+<p>Ваша файловая система будет выглядеть примерно так:</p>
+
+<table border="0" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="code-outline"><pre class="displaycode">afsfuse_client   &lt;--RX[RPC]--&gt;   afsfuse_server
+</pre></td></tr></tbody></table><br>
+
+<p>
+afsfuse_client будет направлять переданные ей вызовы в afsfuse_server, 
+размещенный на другой машине. Процесс afsfuse_server будет обрабатывать 
+все запросы, передаваемые ему клиентом, и возвращать результаты. Он 
+выполняет всю необходимую работу. Механизмом, используемым для RPC, 
+является RX. Здесь нет кэширования ни данных, ни метаданных.
+</p>
+
+<div class="ibm-alternate-rule"><hr></div><p class="ibm-ind-link ibm-back-to-top"><a href="#ibm-pcon" class="ibm-anchor-up-link">В начало</a></p><p><a name="N1030B"><span class="atitle">Определение уровня RX RPC</span></a></p>
+
+<p>Перед дальнейшей работой вы должны определить ваш уровень RX RPC. Для
+ этого, создайте файл .xg для rxgen, чтобы описать ваш прокси и код 
+заглушки, которые будут связаны с afsfuse_client.c и afsfuse_server.c. В
+ листинге 2 показано создание файла afsfuse.xg со следующим содержимым:</p>
+
+<br><a name="N10318"><b>Листинг  2. Создание файла afsfuse.xg</b></a><br><table border="0" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="code-outline"><pre class="displaycode">
+#define MYMAXPATH 512
+%#include &lt;rx/rx.h&gt;
+%#include &lt;/rx_null.h &gt;
+%#define SAMPLE_SERVER_PORT 5000
+%#define SAMPLE_SERVICE_PORT 0
+/* т.е., порт сервера пользователя */
+%#define SAMPLE_SERVICE_ID 4 /* Максимальное количество запросов, 
+которые будут
+                                обрабатываться этой службой одновременно */
+/* Это количество будет также гарантировано для параллельного 
+выполнения при
+отсутствии обрабатываемых служебных запросов */
+%#define SAMPLE_MAX 2 /* Минимальное количество запросов, 
+которые гарантированно
+                         будут обработаны немедленно */
+%#define SAMPLE_MIN 1 /* Индекс класса защиты "null" в 
+примере службы.
+                         Должен равняться 0 (есть N классов, 
+                         пронумерованных с 0.
+                         В этом случае, N равно 1) */
+%#define SAMPLE_NULL 0 /********************** fuse4_file_info взят из fuse.h 
+                        rxgen не понимает fuse.h mystat взят из man 2
+                        mystat необходимы опять rxgen не понимает
+                        struct paras и остановится. **********************/
+struct my_file_info { /** Открыть флаги. Доступна в open() и release() */
+                     int flags; /** Дескриптор файла. Может быть заполнен 
+                     файловой системой в 
+                                    open(). Доступна для всех других 
+                                    операций с файлами */
+                     unsigned int fh; /** В случае операции записи указывает, 
+                     вызвана ли она
+                                          writepage */
+                     int writepage;
+                    };
+struct mystatfs {
+                    afs_uint32 f_type; /* тип файловой системы (см. ниже) */
+                    afs_uint32 f_bsize; /* оптимальный размер передаваемого блока */
+                    afs_uint32 f_blocks; /* общее количество блоков данных 
+                    в файловой системе */
+                    afs_uint32 f_bfree; /* свободные блоки в fs */
+                    afs_uint32 f_bavail; /* свободные блоки, доступные не superuser*/
+                    afs_uint32 f_files; /* общее число узлов в файловой системе */
+                    afs_uint32 f_ffree; /* свободные файловые узлы в fs */
+                    afs_uint32 f_fsid1; /* id файловой системы*/
+                    afs_uint32 f_fsid2; /* id файловой системы */
+                    afs_uint32 f_namelen; /* максимальная длина названий файлов */
+                    afs_uint32 f_spare[6]; /* резерв */
+                };
+struct mystat {
+                    afs_uint32 st_dev; /* устройство */
+                    afs_uint32 st_ino; /* inode */
+                    afs_uint32 st_mode; /* защита */
+                    afs_uint32 st_nlink; /* число жестких ссылок */
+                    afs_uint32 st_uid; /* user ID владельца */
+                    afs_uint32 st_gid;/* group ID владельца */
+                    afs_uint32 st_rdev; /* тип устройства (если inode) */
+                    afs_uint32 st_size; /* общий размер, в байтах */
+                    afs_uint32 st_blksize; /* blocksize для I/O файловой системы */
+                    afs_uint32 st_blocks; /* число распределенных блоков */
+                    afs_uint32 st_atim; /* время последнего доступа */
+                    afs_uint32 st_mtim; /* время последней модификации */
+                    afs_uint32 st_ctim; /* время последнего изменения */
+                };
+struct my_dirhandle{
+                    afs_uint32 type;
+                    afs_uint32 inode;
+                    char name[MYMAXPATH];
+                };
+typedef my_dirhandle bulkmydirhandles&lt;&gt;;
+ /********************* функции фазы 1 *********************************************/
+rxc_getattr(IN string mypath&lt;MYMAXPATH&gt;, IN int dummy) split = 1;
+rxc_getdirWrapper(IN string path&lt;MYMAXPATH&gt;, 
+OUT bulkmydirhandles *handles) = 2;
+rxc_read(IN string path&lt;MYMAXPATH&gt;;, 
+IN afs_uint32 size, IN afs_uint32 offset,
+         IN struct my_file_info *fi) split = 3;
+rxc_open(IN string path&lt;MYMAXPATH&gt;, IN int flags, OUT u_int *hd) = 4;
+rxc_write(IN string path&lt;MYMAXPATH&gt;,IN afs_uint32 size, IN afs_uint32 offset,
+          IN struct my_file_info *fi) split = 5;
+rxc_chmod(IN string path&lt;MYMAXPATH&gt;, IN afs_uint32 mode) = 6;
+rxc_chown(IN string path&lt;MYMAXPATH&gt;, IN afs_uint32 uid, IN afs_uint32 gid) = 7;
+rxc_utime(IN string path&lt;MYMAXPATH&gt;, IN afs_uint32 at,IN afs_uint32 mt) = 8;
+rxc_mknod(IN string path&lt;MYMAXPATH&gt;, afs_uint32 mode, afs_uint32 rdev) = 9 ;
+rxc_mkdir(IN string path&lt;MYMAXPATH&gt;, IN afs_uint32 mode) = 10;
+rxc_unlink(IN string path&lt;MYMAXPATH&gt;) = 11 ;
+rxc_rmdir(IN string path&lt;MYMAXPATH&gt;) = 12;
+rxc_rename(IN string from&lt;MYMAXPATH&gt;, IN string to&lt;MYMAXPATH&gt;) = 13;
+rxc_truncate(IN string path&lt;MYMAXPATH&gt;, IN afs_uint32 size) = 14;
+rxc_release(IN string path&lt;MYMAXPATH&gt;, IN struct my_file_info *fi) = 15;
+rxc_readlink(IN string path&lt;MYMAXPATH&gt;, IN afs_uint32 size,OUT string
+             data&lt;MYMAXPATH&gt;) = 16;
+rxc_symlink(IN string from&lt;MYMAXPATH&gt;, IN string to&lt;MYMAXPATH&gt;) = 17;
+rxc_link(IN string from&lt;MYMAXPATH&gt;, IN string to&lt;MYMAXPATH&gt;) = 18;
+rxc_statfs(IN string path&lt;MYMAXPATH&gt;, OUT struct mystatfs *stbuf) = 19;
+rxc_fsync(IN string path &lt;MYMAXPAT&gt;, IN int isdatasync, IN struct my_file_info
+          *fi) = 20 ;
+rxc_flush(IN string path &lt;MYMAXPATH&gt;, IN struct my_file_info *fi) = 21 ;
+</pre></td></tr></tbody></table><br>
+
+<p>При определении уровня RX RPC обратите внимание на следующие моменты:
+</p>
+
+<ul>
+<li>Вы определили <code>mystatfs</code>, <code>mystat</code> и <code>my_file_info</code> как оболочки над структурами <code>statfs</code>, <code>stat</code> и <code>fuse_file_info</code>.
+ Они будут преобразованы при помощи сгенерированного XDR-кода (XDR, 
+External Data Representation позволяют данным быть заключенными в 
+оболочку архитектурно-независимым способом, для того чтобы данные могли 
+передаваться между гетерогенными компьютерными системами).
+</li>
+
+<li>Вы определили примерно по одной функции для каждого члена структуры <code>fuse_operations</code> с почти одинаковыми параметрами, поскольку работа <code>afsfuse_client</code> заключается просто в принятии вызовов из файловой системы FUSE и передаче их в <code>afsfuse_server</code>.
+</li>
+
+<li>Вы жестко закодировали некоторые значения, например <code>MYMAXPATH</code>, которые вы должны были бы получить из системы - жесткое кодирование было сделано ради упрощения.
+</li>
+</ul>
+
+<div class="ibm-alternate-rule"><hr></div><p class="ibm-ind-link ibm-back-to-top"><a href="#ibm-pcon" class="ibm-anchor-up-link">В начало</a></p><p><a name="N10355"><span class="atitle">Создание клиентского файла и файла-заглушки</span></a></p>
+
+<p>
+Выполните компиляцию файла afsfuse.xg при помощи rxgen для создания 
+файлов клиента и заглушки. Из каталога, содержащего исходный код 
+afsfuse_server и afsfuse_client, выполните команду <code>openafs-1.2.13/i386_linux24/dest/bin/rxgen afsfuse.xg</code>. При этом будут созданы следующие файлы:</p>
+
+<ul>
+<li>
+afsfuse.cs.c - клиентский код заглушки (stub) для связи с afsfuse_client.c.
+</li>
+<li>
+afsfuse.h - заголовочный файл, содержащий различные определения для вашего кода FUSE RX.
+</li>
+<li>
+afsfuse.ss.c - серверный код заглушки (прокси-код) для связи с кодом afsfuse_server.
+</li>
+<li>
+afsfuse.xdr.c - код для маршаллизации древовидных структур, которые вы определили в afsfuse.xg.
+</li>
+</ul>
+
+<p>
+Теперь добавьте некоторый код в afsfuse_client.c и afsfuse_server.c для 
+выполнения реальной работы. Большинство из вызовов будет выглядеть 
+следующим образом:
+</p>
+
+<ul>
+<li><code>Our_call_in_afs_fuse_client()</code>. Маршаллизация параметров
+ и подготовка для RPC. Вызов приложения afsfuse_server по RX [RPC]. 
+Демаршаллизация параметров. Копирование значений в формальные параметры,
+ переданные в эту функцию.
+</li>
+<li><code>Our_call_in_afs_fuse_server()</code>. Демаршаллизация 
+параметров. Вызов локальной файловой системы или AFS-функций. 
+Маршаллизация параметров и подготовка для RPC. Вызов RX RPC.
+</li>
+</ul>
+
+<p>Вызов afsfuse_client.c выглядит следующим образом:</p>
+
+<table border="0" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="code-outline"><pre class="displaycode">int afsfuse_readlink(const char *path, char *buf, size_t size){
+    rx_connection *local&amp; int ret&amp; char *buffer = malloc (512)&amp;
+    memset(buffer,0,512)&amp; memset(buf,0,size)&amp; local = getconnection()&amp;
+    ret = rxc_rxc_readlink(local,path,512,&amp;buffer) // rpc call
+         relconnection(local)&amp;
+         strncpy(buf,buffer,512-1)&amp;
+        //&lt;- демаршаллизация параметров
+        return ret&amp;
+    }
+</pre></td></tr></tbody></table><br>
+
+<p>Вызов afsfuse_server.c выглядит следующим образом:</p>
+
+<br><a name="N10392"><b>Листинг 3. Вызов afsfuse_server.c</b></a><br><table border="0" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="code-outline"><pre class="displaycode">
+int rxc_rxc_readlink( struct rx_call *call, char * path, afs_uint32 size, char**data)
+    { int ret&amp; char lbuff[512] ={0}&amp;
+    translatePath(path,lbuff)&amp; //&lt;- выполнить вызов файловой системы
+     *data = malloc(512)&amp;
+     res = readlink(lbuff, *data, 512-1)&amp;
+     if(res == -1) return -errno&amp; (*data)[res] = '\0'&amp; return 0&amp;
+    }
+</pre></td></tr></tbody></table><br>
+
+<p>Аналогично, вы можете добавить код в другие функции для расширения возможностей вашей файловой системы.
+</p>
+
+<p>Вы должны создать makefile для компилирования вашего кода. Не 
+забудьте включить следующие параметры при компилировании кода для 
+afsfuse_client: <code>-D_FILE_OFFSET_BITS=64</code> и <code>-DFUSE_USE_VERSION=22</code>.</p>
+
+<br><a name="N103AA"><b>Листинг 4. Генерирование файла makefile для компилирования клиентского кода</b></a><br><table border="0" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td class="code-outline"><pre class="displaycode">
+SRCDIR=./ LIBRX=${SRCDIR}lib/librx.a
+LIBS=${LIBRX} ${SRCDIR}lib/liblwp.a
+#CC = g++
+CFLAGS=-g -I. -I${SRCDIR}include -I${SRCDIR}include/fuse/ -DDEBUG ${XCFLAGS}
+    -D_FILE_OFFSET_BITS=64 -DFUSE_USE_VERSION=22
+afsfuse_client: afsfuse_client.o afsfuse.xdr.o ${LIBS} bulk_io.o afsfuse.cs.o
+    ${CC} ${CFLAGS} -o afsfuse_client afsfuse_client.o ${SRCDIR}lib/fuse/fuse.o
+    ${SRCDIR}lib/fuse/mount.o ${SRCDIR}lib/fuse/helper.o
+    ${SRCDIR}lib/fuse/fuse_mt.o bulk_io.o afsfuse.cs.o afsfuse.xdr.o ${LIBS}
+afsfuse_server: afsfuse_server.o afsfuse.xdr.o afsfuse.ss.o bulk_io.o ${LIBS}
+    ${CC} ${CFLAGS} -o afsfuse_server afsfuse_server.o bulk_io.o afsfuse.ss.o
+    afsfuse.xdr.o ${LIBS}
+#afsfuse_client.o: afsfuse.h
+#afsfuse_server.o: afsfuse.h
+bulk_io.o: ${CC} -c -g -I${SRCDIR}include bulk_io.c afsfuse.cs.c afsfuse.ss.c
+    afsfuse.er.c afsfuse.h afsfuse.xdr.c: afsfuse.xg rxgen afsfuse.xg
+afsfuse.xdr.o: afsfuse.xdr.c ${CC} -c -g -I{SRCDIR}include afsfuse.xdr.c
+all: afsfuse_server afsfuse_client
+clean: rm *.o rm afsfuse_client rm afsfuse_server
+</pre></td></tr></tbody></table><br>
+
+<p>Помните, что вы по-прежнему должны использовать librx.a и liblwp.a 
+для связывания с RX-кодом и LWP-кодом для RX. fuse/fuse.o, fuse/helper.o
+ и fuse/mount.o - это библиотеки FUSE, с которыми вы должны связать ваш 
+код.</p>
+
+<div class="ibm-alternate-rule"><hr></div><p class="ibm-ind-link ibm-back-to-top"><a href="#ibm-pcon" class="ibm-anchor-up-link">В начало</a></p><p><a name="N103B3"><span class="atitle">Заключение</span></a></p>
+
+<p>В этой статье вы изучили процесс установки FUSE и OpenAFS, а также 
+как их использовать для создания и настройки вашей собственной файловой 
+системы в пространстве пользователя, полнофункциональной, стабильной 
+файловой системы в Linux, не требующей обновления или перекомпилирования
+ активного ядра - вы даже не должны быть программистом модуля ядра. Вы 
+узнали о двух ключевых концепциях для запуска файловой системы FUSE: как
+ установить и настроить модуль ядра FUSE и как воспользоваться 
+возможностями библиотек FUSE и API.</p>
+
+<!-- CMA ID: 146178 --> <!-- Site ID: 40 --> <!-- XSLT stylesheet used to transform this file:  dw-article-6.0-beta.xsl -->
+<br><div class="ibm-alternate-rule"><hr></div><p class="ibm-ind-link ibm-back-to-top"><a href="#ibm-pcon" class="ibm-anchor-up-link">В начало</a></p><p><span class="atitle"><a name="download">Загрузка</a></span></p><table class="ibm-data-table" border="0" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><th scope="col">Описание</th><th scope="col">Имя</th><th scope="col">Размер</th><th scope="col">Метод загрузки</th></tr><tr><td class="tb-row" scope="row">AFSFuse filesystem sample code</td><td nowrap="nowrap">l-fuse.zip</td><td nowrap="nowrap">9KB</td><td nowrap="nowrap"><a class="fbox" href="http://www.ibm.com/developerworks/apps/download/index.jsp?contentid=146178&amp;filename=l-fuse.zip&amp;method=http&amp;locale=ru_RU">HTTP</a></td></tr></tbody></table><p><a href="http://www.ibm.com/developerworks/library/whichmethod.html" class="ibm-forward-link">Информация о методах загрузки</a></p><br>
+<p><a name="resources"><span class="atitle">Ресурсы</span></a></p><p><b>Научиться</b></p><ul><li>
+Оригинал статьи "<a href="http://www-128.ibm.com/developerworks/linux/library/l-fuse/index.html">Develop your own filesystem with FUSE</a>".
+<br><br></li><li>
+Отличный пример FUSE в действии: <a href="http://richard.jones.name/google-hacks/gmail-filesystem/gmail-filesystem.html">страница Gmail filesystem hack Ричарда Джонса</a>, на которой подробно описана и проанализирована программа Google Gmail.
+<br><br></li><li>
+Ознакомительная статья о <a href="http://lwn.net/Articles/68104/">реализации FUSE</a>.
+<br><br></li><li>
+"<a href="http://www.ibm.com/developerworks/linux/library/l-fs.html">Распространенные потоки: Руководство разработчика расширенных файловых систем</a>" (developerWorks) - серия статей, помогающая стать экспертом в файловых системах.
+<br><br></li><li>
+В статье "<a href="http://www.ibm.com/developerworks/linux/library/l-affinity.html">Позаботьтесь о родственности процессоров</a>" (developerWorks, сентябрь 2005) рассматривается, как написать лучшие userspace-приложения.
+<br><br></li><li>
+В статье "<a href="http://www.ibm.com/developerworks/linux/library/os-openafs/">OpenAFS помогает собрать вместе распределенные данные</a>" (developerWorks, май 2005) OpenAFS позиционируется как преемник NFS. Реальная дискуссия.
+<br><br></li><li>
+В <a href="http://www.ibm.com/developerworks/linux/">зоне developerWorks Linux</a> размещены дополнительные ресурсы для Linux-разработчиков.
+<br><br></li><li>
+Следите за <a href="http://www.ibm.com/developerworks/offers/techbriefings/?S_TACT=105AGX03&amp;amp;S_CMP=art">техническими событиями и web-конференциями developerWorks</a>.
+<br><br></li></ul><p><b>Получить продукты и технологии</b></p><ul><li>
+Загрузите <a href="http://sourceforge.net/project/showfiles.php?group_id=121684&amp;amp;package_id=132802">исходный код FUSE</a>.
+<br><br></li><li>
+На <a href="http://fuse.sourceforge.net/">домашней странице FUSE</a> размещены файлы для загрузки, FAQ и wiki, многочисленные списки рассылок, <a href="http://fuse.sourceforge.net/wiki/index.php/FileSystems">список файловых систем, использующих FUSE</a>, и список OS и систем, поддерживающих FUSE.
+<br><br></li><li>
+<a href="http://www.select-tech.si/fuse/">FUSE-J обеспечивает Java-связывание для FUSE</a> и поставляется с "экспериментальной" файловой системой ZIP, которая выглядит довольно стабильной.
+<br><br></li><li>
+<a href="http://www.ibm.com/developerworks/offers/sek/?S_TACT=105AGX03&amp;amp;S_CMP=art">Закажите SEK for Linux</a>,
+ набор из двух DVD, содержащий последнее пробное программное обеспечение
+ IBM для Linux: DB2®, Lotus®, Rational®, Tivoli® и WebSphere®.
+<br><br></li><li>
+Используйте в вашем следующем Linux-проекте пробное <a href="http://www.ibm.com/developerworks/downloads/?S_TACT=105AGX03&amp;amp;S_CMP=art">программное обеспечение IBM</a>, доступное для загрузки с сайта developerWorks.
+<br><br></li></ul><p><b>Обсудить</b></p><ul><li>
+Следите за <a href="http://www.ibm.com/developerworks/blogs/">блогами developerWorks</a> и подключайтесь к <a href="http://www.ibm.com/developerworks/community">сообществу developerWorks</a>.
+<br><br></li></ul>
+<p><a name="author"><span class="atitle">Об авторе</span></a></p><div class="ibm-container ibm-portrait-module ibm-alternate-two"><div class="ibm-container-body"><p><a name="author1"></a>Сумит
+ Сингх (Sumit Singh) работает инженером-программистом в группе 
+корпоративных файловых систем IBM. Его основная работа состоит в 
+обеспечении L3-поддержки для AFS.</p></div></div>
+<!-- MAIN_COLUMN_CONTENT_END -->
+  <!-- OVERLAYS_START -->
+  <!-- Report_Abuse_Start -->
+  <div class="ibm-common-overlay ibm-no-print" id="reportabuseoverlay">
+    <div class="ibm-head"><p><a class="ibm-common-overlay-close" href="#">Закрыть [x]</a></p></div>
+    <div class="ibm-body">
+      <div class="ibm-main">
+        <a class="ibm-access" name="reportabuseoverlay">Помощь по сообщениям о нарушениях</a>   
+        <div class="ibm-title"><h1>Сообщение о нарушениях</h1></div>
+        <div class="ibm-container ibm-alternate">
+          <p><strong>Спасибо.</strong>  Эта запись была помечена для модератора.</p>
+          <div class="ibm-overlay-rule"><hr></div>
+          <div class="ibm-buttons-row">
+            <input onclick="ibmCommon.Overlays.hide('reportabuseoverlay');return false;" class="ibm-btn-cancel-sec dw-btn-cancel-sec" name="ibm-cancel" value="Закрыть" type="button">
+          </div>
+        </div>
+      </div> 
+    </div>
+    <div class="ibm-footer"></div>
+  </div>
+  <!-- Report_Abuse_Error_Start -->
+  <div class="ibm-common-overlay ibm-no-print" id="reportabuseoverlayerror">
+    <div class="ibm-head"><p><a class="ibm-common-overlay-close" href="#">Закрыть [x]</a></p></div>
+    <div class="ibm-body">
+      <div class="ibm-main">
+        <a class="ibm-access" name="reportabuseoverlayerror">Помощь по сообщениям о нарушениях</a>   
+        <div class="ibm-title"><h1>Сообщение о нарушениях</h1></div>
+        <div class="ibm-container ibm-alternate">
+          <p class="ibm-ind-error"><strong>Сообщение о нарушении не было отправлено.  Попробуйте, пожалуйста, позже.</strong></p>
+          <div class="ibm-overlay-rule"><hr></div>
+          <div class="ibm-buttons-row">
+            <input onclick="ibmCommon.Overlays.hide('reportabuseoverlayerror');return false;" class="ibm-btn-cancel-sec dw-btn-cancel-sec" name="ibm-cancel" value="Закрыть" type="button">
+          </div>
+        </div>
+      </div> 
+    </div>
+    <div class="ibm-footer"></div>
+  </div>
+  <!-- Sign in OVERLAY STARTS HERE --> 
+  <div class="ibm-common-overlay" id="signin_overlay">
+    <div class="ibm-head">
+      <p><a class="ibm-common-overlay-close" href="#" onclick="clearForm();">Закрыть [x]</a></p>
+    </div>
+    <div class="ibm-body">
+      <div class="ibm-main">
+        <div class="ibm-title ibm-subtitle">
+          <h1>developerWorks: вход</h1>
+          <div id="ibm-overlay-error-signin" class="no-display"></div>
+        </div>
+        
+        <div class="ibm-container ibm-alternate ibm-buttons-last">
+          <div class="ibm-container-body">
+             <form class="ibm-column-form" id="sFormId" action="" method="post" name="sForm" onsubmit="return false;">
+              <p><label for="ibmid">IBM ID:</label><span><input name="ibm-id" id="ibmid" size="25" class="required" onkeypress="handleEP(event,this.form);" type="text"><br>
+                <a class="ibm-forward-link" href="#" onclick="(function () {window.location='/developerworks/dwwi/DWAuthRouter?m=reg&amp;lang=ru_RU&amp;d='+encodeURIComponent(location.href);})();">Нужен IBM ID?</a><br>
+                <a class="ibm-forward-link" href="http://www.ibm.com/developerworks/dwwi/jsp/WSHelp.jsp?lang=ru_RU">Забыли Ваш IBM ID?</a></span>   
+              </p> 
+              <p><label for="password">Пароль:</label><span><input name="password" id="password" size="25" value="" class="required" onkeypress="handleEP(event,this.form);" type="password"><br>
+                <a class="ibm-forward-link" href="#" onclick="(function () {window.location='https://www.ibm.com/account/profile?page=forgot&amp;lang=ru_RU&amp;appname=ibm&amp;required=null&amp;d='+encodeURIComponent(getAuthUrl())+'%3Fm%3Dloginpage%26lang%3Dru_RU%26d%3D'+encodeURIComponent(location.href);})();">Забыли Ваш пароль?</a>
+                <br><a class="ibm-forward-link" href="#" onclick="(function () {window.location='https://www.ibm.com/account/profile?page=chpw&amp;lang=ru_RU&amp;appname=ibm&amp;required=null&amp;d='+encodeURIComponent(location.href);})();">Изменить пароль</a></span></p> 
+ 
+              <p class="dw-perm-box">
+                <span><input id="perm" name="perm_name" type="checkbox"><label for="perm"> Запомнить меня.</label></span>
+              </p>
+
+              <p>Нажимая <strong>Отправить</strong>, Вы принимаете <a href="http://www.ibm.com/developerworks/community/terms?lang=ru">Условия использования</a> developerWorks.</p>
+              <div class="ibm-buttons-row">
+                <p><input class="ibm-btn-arrow-pri" name="ibm-submit" value="Отправить" onclick="signin();return false;" type="submit"><span class="ibm-sep">&nbsp;</span>
+                  <input value="Отмена" name="ibm-cancel" class="ibm-btn-cancel-sec" onclick="clearForm();ibmCommon.Overlays.hide('signin_overlay');return false;" type="button"></p>
+              </div>
+            </form>
+            <div class="ibm-overlay-rule"><hr></div>
+            <p>При первом входе в developerWorks для Вас будет создан <strong>профиль. Выберите информацию отображаемую в Вашем профиле — скрыть или отобразить поля можно в любой момент</strong>. </p>
+            <div class="dw-overlay-legal"><p>Вся введенная информация защищена.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ibm-footer"></div>
+  </div>
+  <!-- Sign in OVERLAY ENDS HERE --> 
+  
+  
+  <!-- Display name OVERLAY STARTS HERE --> 
+  <div class="ibm-common-overlay" id="displayname_overlay">
+    <div class="ibm-head">
+      <p><a class="ibm-common-overlay-close" href="#" onclick="clearForm();">Закрыть [x]</a></p>
+    </div>
+    <div class="ibm-body">
+      <div class="ibm-main">
+        <div class="ibm-title ibm-subtitle">
+          <h1>Выберите ваше отображаемое имя</h1>
+          <div id="ibm-overlay-error-dname" class="no-display"></div>
+        </div>
+        <div class="ibm-container ibm-alternate ibm-buttons-last">
+          <div class="ibm-container-body">
+            <p class="ibm-overlay-intro">При первом входе в 
+developerWorks для Вас будет создан профиль и Вам нужно будет выбрать 
+Отображаемое имя. Оно будет выводиться рядом с контентом, опубликованным
+ Вами в developerWorks.</p><p><strong>Отображаемое имя должно иметь длину от 3 символов до 31 символа</strong>.
+  Ваше Имя в системе должно быть уникальным. В качестве имени по 
+соображениям приватности нельзя использовать контактный e-mail.</p>
+            <form id="dFormId" method="post" action="" name="dForm" onsubmit="return false;" class="ibm-column-form">
+              <p><label for="displayname">Отображаемое имя:</label><span><input name="displayname" id="displayname" size="25" onkeypress="handleEP(event,this.form);" type="text"></span>
+                <span class="ibm-form-note">(Должно содержать от 3 до 31 символа.)</span>
+              </p>
+              
+              <div class="ibm-overlay-rule"><hr>
+              </div>
+              <p>Нажимая <strong>Отправить</strong>, Вы принимаете <a href="http://www.ibm.com/developerworks/community/terms?lang=ru">Условия использования</a> developerWorks.</p>
+              <div class="ibm-buttons-row">
+                <p><input class="ibm-btn-arrow-pri" name="ibm-submit" value="Отправить" onclick="signin();return false;" type="submit"><span class="ibm-sep">&nbsp;</span>
+                  <input value="Отмена" name="ibm-cancel" class="ibm-btn-cancel-sec" onclick="clearForm();ibmCommon.Overlays.hide('displayname_overlay');return false;" type="button"></p>
+              </div>
+            </form>
+            <div class="ibm-overlay-rule"><hr></div>
+            <div class="dw-overlay-legal"><p>Вся введенная информация защищена.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ibm-footer"></div>
+  </div>
+  <!-- Display name OVERLAY ENDS HERE -->
+  <!-- OVERLAYS_END -->
+  <!-- RATINGS START -->
+  <p class="ibm-no-print"><span class="atitle"><a name="iratings">Оценить эту статью</a></span></p>
+  <input id="art-rating" name="ratinga" value="4" type="hidden"><div id="art-rating-module"><p id="submitErr" class="ibm-ind-error" style="display: none;"><strong>Ошибка: Невозможно оправить. Попробуйте, пожалуйста, еще раз.</strong></p><p><span id="ratingSectUI"><img alt="Средний показатель рейтинга 4 звездочки основанный на 16 голосов" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/stars120x20-4gw.jpg" class="dw-avg-rating"> Средний показатель рейтинга (16 голоса)</span></p><div class="ibm-container" id="ratingForm"><div class="ibm-container-body dw-container-ratings"><form class="dw-ratings-form" onsubmit="artRating.submitRating(); return false;"><input name="ratingstars" id="rat-1" value="1" type="radio"><label class="rating-label" id="star1" for="rat-1">1 звездочка</label><img id="rat-1-img" alt="1 звездочка" title="1 звездочка" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/stars120x20-1w.jpg" class="rating-image"><span class="dw-rating-text">1 звездочка</span><br><input name="ratingstars" id="rat-2" value="2" type="radio"><label class="rating-label" id="star2" for="rat-2">2 звездочки</label><img id="rat-2-img" alt="2 звездочки" title="2 звездочки" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/stars120x20-2w.jpg" class="rating-image2"><span class="dw-rating-text">2 звездочки</span><br><input name="ratingstars" id="rat-3" value="3" type="radio"><label class="rating-label" id="star3" for="rat-3">3 звездочки</label><img id="rat-3-img" alt="3 звездочки" title="3 звездочки" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/stars120x20-3w.jpg" class="rating-image2"><span class="dw-rating-text">3 звездочки</span><br><input name="ratingstars" id="rat-4" value="4" type="radio"><label class="rating-label" id="star4" for="rat-4">4 звездочки</label><img id="rat-4-img" alt="4 звездочки" title="4 звездочки" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/stars120x20-4w.jpg" class="rating-image2"><span class="dw-rating-text">4 звездочки</span><br><input name="ratingstars" id="rat-5" value="5" type="radio"><label class="rating-label" id="star5" for="rat-5">5 звездочки</label><img id="rat-5-img" alt="5 звездочки" title="5 звездочки" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/stars120x20-5w.jpg" class="rating-image2"><span class="dw-rating-text">5 звездочки</span><div class="ibm-buttons-row"><p class="ibm-first"><input value="Отправить" name="ibm-submit" class="ibm-btn-arrow-pri dw-ratings-submit" type="submit"></p></div></form></div></div></div>
+  <script language="JavaScript" type="text/javascript">
+    // <![CDATA[
+   // widget div id and article id as args
+   window.artRating.init('art-rating-module','art-rating-summary');
+// ]]>
+  </script>
+  <!-- RATINGS END -->
+<!-- INLINE_COMMENTS_START -->
+ <p class="ibm-no-print"><span class="atitle"><a name="icomments">Комментарии</a></span></p> 
+  <script language="JavaScript" type="text/javascript">
+    // <![CDATA[
+dwc = {};
+dwc.cmts = 'комментарии';
+dwc.signInPreText = '';
+dwc.signIn = 'Войти';
+dwc.or = 'or';
+dwc.register = 'зарегистрироваться';
+dwc.signInPostText = '';
+dwc.leaveCmt = 'чтобы оставить комментарий.';
+dwc.view = 'Посмотреть';
+dwc.totalCmts = 'Всего комментариев';
+dwc.postYourCmt = 'Отправить ваш комментарий';
+dwc.show = 'Отобразить:';
+dwc.recentCmts = 'Последние комментарии';
+dwc.allCmts = 'Все комментарии';
+dwc.tooLongCmt = 'Количество знаков в вашем комментарии превысило 1000.';
+dwc.numCharsLeft = 'осталось <span id="charCount">{1}</span> символов';
+dwc.reportAbuse = 'Сообщение о нарушениях';
+dwc.notifyMsg = 'Дайте мне знать, когдапоявятся новые комментарии';
+dwc.htmlWarning = 'Внимание: HTML элементы не поддерживаются в комментариях.'; 
+dwc.addCmts = 'Добавить комментарии';
+dwc.addCmt = 'Добавить комментарий';
+dwc.doNotErase = '-- Добавьте любой комментарий ниже --'; 
+dwc.viewOrAddCmts = 'Посмотреть или добавить комментарии';
+dwc.reportInapprCont = 'Сообщить о некорректном содержании';
+dwc.reportInapprContLink = 'http://www.ibm.com/developerworks/forums/forum.jspa?forumID=1835';
+dwc.postingCmt = 'Комментарий отправляется';
+dwc.noCmt = 'Нет комментариев';
+dwc.netwkErr = 'Возникла проблема при загрузке комментариев. Пожалуйста, обновите страничку позже.';
+dwc.addACmt = 'Добавить комментарий';
+dwc.instructCmt = 'Для завершения данной транзакции вы обязательно должны заполнить поля, отмеченные звездочкой (<span class="ibm-required">*</span>).';
+dwc.cmt = 'Комментарий:';
+dwc.btnPost = 'Отправить ';
+dwc.btnPostAnon = 'Отправить анонимно';
+dwc.btnClrCmt = 'Стереть';
+dwc.btnCancel = 'Отменить';
+dwc.showRecent = 'Показать следующие {1} '; // {1} is the count to be substituted
+dwc.showNext = 'Показать следующие {1} '; // {1} is the count to be substituted
+dwc.showAllCmts = 'Показать все комментарии';
+dwc.enterCmt = 'Пожалуйста, введите комментарий';
+dwc.loginErr = 'Статус вашей авторизации не может быть установлен в данный момент. Пожалуйста, повторите попытку позже.';
+dwc.postErr = 'В настоящее время ваше сообщение не может быть опубликовано. Пожалуйста, попробуйте позже.';
+dwc.postBy = 'Выложено (Размещено) <strong>{1}</strong> {2}'; // {1} is the author to be substituted; {2} is the date
+dwc.siteId = 40;
+dwc.lang = 'ru_RU';
+dwc.viperLang = 'ru';
+// ]]>
+  </script>
+
+<div id="threadShow"><div id="cmtTog" style=""><div class="ibm-container ibm-alternate-two dw-commentbox dw-noborder"><p id="cmtHead"><label for="newCmt"><strong>Добавить комментарий:</strong></label></p><div class="ibm-container-body dw-commentbox dw-noborder"><p id="signInSect"> <a onclick="showSignIn();return false;" href="#">Войти</a> or <a href="http://www.ibm.com/developerworks/dwwi/DWAuthRouter?m=register&amp;lang=ru_RU&amp;d=http%3A%2F%2Fwww.ibm.com%2Fdeveloperworks%2Fru%2Flibrary%2Fl-fuse%2F%23icomments">зарегистрироваться</a>  чтобы оставить комментарий.</p><p>Внимание: HTML элементы не поддерживаются в комментариях.</p><span id="infoCmt"></span><form focus="name" enctype="multipart/form-data" method="post" action="" name="form" class="ibm-column-form"><p><textarea disabled="disabled" cols="120" rows="5" name="newCmt" id="newCmt" class="dw-inoperable"></textarea><br></p><span class="ibm-input-group"><input value="1" name="comment_notification" id="comment_notification" disabled="disabled" type="checkbox"><label id="notifyText" class="ibm-form-note dw-btn-cancel-sec" for="comment_notification">Дайте мне знать, когдапоявятся новые комментарии</label></span><span class="ibm-form-note dw-btn-cancel-sec notifySection" id="maxCharsCount">осталось <span id="charCount">1000</span> символов</span><br><br><p></p><p class="ibm-buttons-row"><input disabled="disabled" value="Отправить " jquery1275054459750="11" name="postCmt" id="postCmt" class="ibm-btn-arrow-sec dw-btn-arrow-sec" alt="Отправить ваш комментарий" type="button"><br><br></p></form></div></div><div id="topControl" class="ibm-container ibm-alternate-two dw-comment-totals" style="display: none;"><div class="ibm-container-body"><form id="selectComments" method="get" action=""><p><span class="dw-comment-totals-label"><strong>Всего комментариев (<span id="numCmts">0</span>)</strong></span><span><img src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/c.gif" alt="" height="10" width="100"></span><span class="dw-how-many-comments-label" style="display:none" id="dropdownCmts"><label for="howManyComments">Отобразить:</label>&nbsp;<select name="comments" id="howManyComments" class="dw-how-many-comments"><option selected="selected" value="recent">Последние комментарии   </option></select><input class="ibm-btn-go" name="ibm-go" value="Go" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/short-btn.gif" alt="Go" type="image"><br></span></p></form></div></div><div id="cmtSect"><div class="comment"><div class="dw-icomment-container"><table class="dw-icomment-body" cellpadding="0" cellspacing="0" width="100%"><tbody><tr><td><p>Нет комментариев</p></td></tr></tbody></table></div></div></div></div><div id="bottomControl" class="ibm-container ibm-alternate-two dw-comment-totals" style="display:none"><div class="ibm-container-body"><form id="selectComments2" method="get" action=""><p><span class="dw-comment-totals-label"><strong>Всего комментариев (<span id="numCmts2">0</span>)</strong></span><span><img src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/c.gif" alt="" height="10" width="100"></span><span class="dw-how-many-comments-label" style="display:none" id="dropdownCmts2"><label for="howManyComments2">Отобразить:</label>&nbsp;<select name="comments" id="howManyComments2" class="dw-how-many-comments"><option selected="selected" value="recent">Последние комментарии   </option></select><input class="ibm-btn-go" name="ibm-go" value="Go" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/short-btn.gif" alt="Go" type="image"><br></span></p></form></div></div></div>
+ 
+<!-- INLINE_COMMENTS_END -->
+
+  <p class="ibm-ind-link ibm-back-to-top"><a class="ibm-anchor-up-link" href="#ibm-pcon">В начало</a></p>
+
+<!-- Overlays -->
+  
+  
+
+</div>
+<!-- MAIN_COLUMN_CONTAINER_END -->
+
+<!-- Rating_Meta_BEGIN -->
+<!--Rating_Meta_BEGIN--><div class="metavalue">static.content.url=http://www.ibm.com/developerworks/js/artrating/</div><div class="metavalue">SITE_ID=40</div><div class="metavalue">Zone=Linux</div><div class="metavalue">ArticleID=146178</div><div class="metavalue">ArticleTitle=Разработка собственной файловой системы с помощью FUSE</div><div class="metavalue">publish-date=02282006</div><div class="metavalue">author1-email=sumising@in.ibm.com</div><div class="metavalue">author1-email-cc=</div><script language="javascript" type="text/javascript">document.write('<div class="metavalue">url='+location.href.replace(/</g, '%3C')+'</div>');</script><div class="metavalue">url=http://www.ibm.com/developerworks/ru/library/l-fuse/</div><!--Rating_Meta_END-->
+<!-- Rating_Meta_END -->
+
+</div>
+<!-- MAIN_COLUMN_END-->
+
+<!-- RIGHT_COLUMN_BEGIN -->
+<div id="ibm-content-sidebar">
+
+<!-- RIGHT_COLUMN_CONTENT_BEGIN --> 
+<div class="ibm-container"><h2>Содержание</h2><div class="ibm-container-body"><img alt="" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/c_002.gif" height="1" width="1"><ul class="ibm-bullet-list"><li><a class="ibm-feature-link" href="#N10057">Введение в FUSE</a></li><li><a class="ibm-feature-link" href="#N10084">Распаковка FUSE</a></li><li><a class="ibm-feature-link" href="#N100BB">Компоновка и установка FUSE</a></li><li><a class="ibm-feature-link" href="#N100FB">Настройка файловой системы</a></li><li><a class="ibm-feature-link" href="#N1030B">Определение уровня RX RPC</a></li><li><a class="ibm-feature-link" href="#N10355">Создание клиентского файла и файла-заглушки</a></li><li><a class="ibm-feature-link" href="#N103B3">Заключение</a></li><li><a class="ibm-feature-link" href="#download">Загрузка</a></li><li><a class="ibm-feature-link" href="#resources">Ресурсы</a></li><li><a class="ibm-feature-link" href="#author">Об авторе</a></li><li><a class="ibm-feature-link" href="#icomments">Комментарии</a></li></ul></div></div>
+
+   
+
+
+<!-- Dig_Deeper -->
+
+<!-- High_Visibility_Offer -->
+
+<!-- Special_Offers -->
+
+<!-- RIGHT_COLUMN_CONTENT_END -->
+
+</div>
+<!-- RIGHT_COLUMN_END -->
+
+<!-- CONTENT_BODY_END -->
+</div>
+
+</div>
+<!-- CONTENT_END -->
+
+ <!-- END_IBM-PCON -->
+</div>
+
+<!-- FOOTER_BEGIN -->
+<div id="ibm-footer">
+<!-- IBM footer container; disabled -->
+</div>
+
+<div id="ibm-page-tools-dw">
+	<div id="dw-footer-top-row">
+		<ul id="dw-foot-options">
+			<li id="dw-print"><a class="ibm-print-link" href="#">Печать страницы</a></li>
+		</ul>
+		<ul id="ibm-foot-options-dw">
+			<li id="dw-foot-0" class="dw-foot-0-ru"><a href="http://www.ibm.com/developerworks/ru/library/l-fuse/REPLACE-SHARE.HTML">Сделать эту страницу общей</a></li>
+			<!--	<li id="dw-foot-1"><a href="REPLACE-FOLLOW.HTML">Follow developerWorks</a></li>
+			-->
+		</ul>
+	</div>
+
+	<!-- TOP ROW SLIDER -->
+    <div id="dw-page-tools-menu">    
+        <div class="ibm-ribbon-pane-dw">
+            <div class="ibm-ribbon-section-dw">
+				<!-- Share this page -->			
+                <div class="dw-footer-columns">
+                    <div class="dw-footer-col-3-1">
+                    	<h2>Сделать эту страницу общей:</h2>                        
+						<ul class="ibm-link-list">
+							<li><a id="dw-foot-0-0" class="ibm-facebook-link" href="http://www.facebook.com/sharer.php?u=http%3A%2F%2Fwww.ibm.com%2Fdeveloperworks%2Fru%2Flibrary%2Fl-fuse%2F&amp;t=%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE">Facebook</a></li>
+							<li><a class="ibm-linkedin-link" href="http://www.linkedin.com/shareArticle?mini=true&amp;url=http%3A%2F%2Fwww.ibm.com%2Fdeveloperworks%2Fru%2Flibrary%2Fl-fuse%2F&amp;title=%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE">LinkedIn</a></li>
+							<li><a class="ibm-twitter-link" href="http://twitter.com/home?status=http%3A%2F%2Fwww.ibm.com%2Fdeveloperworks%2Fru%2Flibrary%2Fl-fuse%2F%20-%20%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE">Twitter</a></li>
+						</ul>
+                    </div>
+                    <div class="dw-footer-col-3-2">
+						<ul class="ibm-link-list">
+							<li><a class="ibm-delicious-link" href="http://delicious.com/post?url=http%3A%2F%2Fwww.ibm.com%2Fdeveloperworks%2Fru%2Flibrary%2Fl-fuse%2F&amp;title=%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE">Delicious</a></li>
+							<li><a class="ibm-digg-link" href="http://digg.com/submit?phase=2&amp;url=http%3A%2F%2Fwww.ibm.com%2Fdeveloperworks%2Fru%2Flibrary%2Fl-fuse%2F&amp;title=%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE">Digg</a></li>
+							<!--<li><a class="ibm-stumbleupon" href="#">StumbleUpon</a></li>-->
+						</ul>
+                    </div>
+                    <div class="dw-footer-col-3-3">
+						<ul class="ibm-link-list">
+							<li><a class="ibm-email-link" href="#">Переслать страницу</a></li>
+						</ul>
+                    </div>
+                    <div class="dw-footer-close">
+						<ul>
+							<li><div class="dw-footer-close-share"><a href="#"><img src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/c.gif" alt="Закрыть [x]" height="10" width="20"></a></div></li>
+						</ul>
+                    </div>
+                </div>
+                <!-- Follow developerWorks -->
+                <div class="dw-footer-columns">
+                    <div class="dw-footer-col-1-1">
+  <!--                      <h2>Follow developerWorks:</h2>
+						<ul class="ibm-link-list">
+							<li><a id="dw-foot-1-0" class="ibm-facebook-link" href="http://www.facebook.com/developerworks">Facebook</a></li>
+							<li><a class="ibm-twitter-link" href="http://twitter.com/developerWorks">Twitter</a></li>
+						</ul>
+                    </div>
+                    <div class="dw-footer-close">
+						<ul>
+							<li><div class="dw-footer-close-follow"><a href="#"><img src="//dw1.s81c.com/i/c.gif" alt="Закрыть [x]" width="20" height="10"/></a></div></li>
+						</ul>-->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="ibm-footer-module-dw">
+	<div class="dw-footer-columns">
+		<div class="dw-footer-col-6-1">
+			<ul>
+				<li><a href="https://www.ibm.com/developerworks/secure/feedback.jsp?domain=dwrussia">Помощь</a></li>
+				<li class="dw-footer-newline"><a href="https://www.ibm.com/developerworks/secure/reprintreq.jsp?domain=dwrussia">Запрос
+					на использование<br>материалов developerWorks</a></li>
+			</ul>
+		</div>
+		<div class="dw-footer-col-6-2">
+			<ul>
+				<li><a href="http://www.ibm.com/developerworks/ru/rss/">Ленты</a></li>
+			</ul>
+		</div>
+		<div class="dw-footer-col-6-3">
+			<ul>
+				<li><a href="https://www.ibm.com/developerworks/community/report?lang=ru">Сообщить о нарушениях</a></li>
+				<li><a href="https://www.ibm.com/developerworks/community/terms?lang=ru">Условия использования</a></li>
+				<li><a href="http://www.ibm.com/privacy/ru/ru/">Конфиденциальность</a></li>
+				<li><a href="http://www.ibm.com/accessibility/us/en/">Доступность (Английский)</a></li>			</ul>
+		</div>
+		<div class="dw-footer-col-6-4">
+			<ul>
+				<!-- JPP:  Validate and update Faculty and Students links -->
+				<li><a href="http://www.ibm.com/ru/software/info/students/">Портал для студентов</a></li>
+				<li><a href="http://www.ibm.com/ru/partners/">Бизнес-партнеры IBM</a></li>
+			</ul>
+		</div>
+		<div class="dw-footer-col-6-5">
+		</div>
+		<div class="dw-footer-col-6-6">
+		</div>
+	</div>
+	<!-- Language selector no-script -->
+	<noscript>
+	<div id="dw-footer-selectlang">
+		<h2><a name="SELECTLANG">Выбрать язык:</a></h2>
+		<ul>
+			<li><a href="http://www.ibm.com/developerworks/">English</a></li>
+			<li><a href="http://www.ibm.com/developerworks/cn/">中文</a></li>
+			<li><a href="http://www.ibm.com/developerworks/jp/">日本語</a></li>
+			<li><a href="http://www.ibm.com/developerworks/ru/">Русский</a></li>
+			<li><a href="http://www.ibm.com/developerworks/br/">Português (Brasil)</a></li>
+			<li><a href="http://www.ibm.com/developerworks/ssa/">Español</a></li>
+			<li><a href="http://www.ibm.com/developerworks/vn/">Việt</a></li>
+		</ul>
+	</div>
+	</noscript>
+</div><!-- FOOTER_END -->
+
+ <!-- END_IBM-TOP -->
+<div id="ibm-overlay-top"></div></div>
+ 
+ <!-- SCRIPTS_INCLUDE_BEGIN -->
+<!-- JQuery start -->
+<script type="text/javascript" language="JavaScript" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/jquery_004.js"></script>
+<script type="text/javascript" language="JavaScript" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/jquery_003.js"></script>
+<script type="text/javascript" language="JavaScript" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/ui_002.js"></script>
+<script type="text/javascript" language="JavaScript" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/ui.js"></script>
+<!-- xM Masthead/Footer -->
+<script src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/jquery_002.js" type="text/javascript">//</script>
+<script src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/jquery.js" type="text/javascript">//</script>
+<script src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/dw_v16.js" type="text/javascript">//</script>
+<script type="text/javascript" language="JavaScript" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/flash-detect.js"></script>
+<script src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/dwsi.js" type="text/javascript">//</script>
+<script type="text/javascript" language="JavaScript" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/dwjquerytags.js"></script>
+<script type="text/javascript" language="JavaScript" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/showcomments.js">//</script>
+<script language="JavaScript" type="text/javascript">
+	// <![CDATA[
+ jQuery('threadShow').showComments('95%',5,'nCmts','icomments');
+// ]]>
+</script>
+<script type="text/javascript" language="JavaScript">
+	jQuery.noConflict();     
+	// Put all your code in your document ready area
+	jQuery(document).ready(function(jQuery) {
+	// Do jQuery stuff using jQuery 
+	jQuery('a.dwauthor').cluetip({
+		local: true,
+		showTitle: false,
+		positionBy: 'bottomTop',
+		sticky: true,	
+		mouseOutClose: true,
+		closeText: '<img src="//www.ibm.com/developerworks/js/jquery/cluetip98/i/x.gif" alt="Close" />',
+		arrows: false,
+		dropShadow: true,
+		cluetipClass: 'dwbasic'
+		});
+
+		//tagging
+		login="false";
+		userid="";
+		whichTags = "init";
+		pCont = "";
+		mCont = "";
+		signInMCont = "";
+		accessCont = "";
+		pValue = 0;
+		mValue = 0;
+
+		rBHash = null;
+		rBHash = new Object();
+		rBHash['viperLang'] = 'ru';
+		rBHash['urlLang'] = 'ru';
+		rBHash['tagThisWinTitle'] = 'Пометить';
+		//rBHash['tagThisWinTitle'] = 'Tagit';		
+
+		rBHash['pTags1'] = 'Популярные теги';
+		//rBHash['pTags1'] = 'Popular tags';		
+
+		rBHash['pTags2'] = 'Конец популярных тегов';
+		//rBHash['pTags2'] = 'End of Popular tags';
+
+		rBHash['mTags1'] = 'Мои теги';
+		//rBHash['mTags1'] = 'My tags';
+
+		rBHash['mTags2'] = 'Конец моих тегов';
+		//rBHash['mTags2'] = 'End of My tags';
+
+		rBHash['alt1'] = 'Загрузка контента';
+		//rBHash['alt1'] = 'Loading Content';
+
+		rBHash['noATags'] = 'Нет активных тегов';
+		//rBHash['noATags'] = 'No active tags';
+
+		rBHash['signIn1'] = 'Пожалуйста ';
+		//rBHash['signIn1'] = 'Please ';
+
+		rBHash['signIn2'] = 'войдите';
+		//rBHash['signIn2'] = 'sign in';
+
+		rBHash['signIn3'] = ' Для того, чтобы получить доступ';
+		//rBHash['signIn3'] = ' to access';
+
+		rBHash['signIn4'] = 'Мои теги';
+		//rBHash['signIn4'] = 'My Tags';
+
+		rBHash['signIn5'] = 'Для того, чтобы получить доступ к Моим тегам, пожалуйста ';
+		//rBHash['signIn5'] = 'To access My Tags, please ';
+
+		rBHash['signIn6'] = 'войдите';
+		//rBHash['signIn6'] = 'sign in';
+
+		rBHash['signIn7'] = 'Отобразить популярные теги';		
+		//rBHash['signIn7'] = 'Read Popular tags';
+
+		zoneHash = new Object();
+		zoneHash['aix'] = 'AIX и UNIX';
+		zoneHash['data'] = 'Information Management';
+		zoneHash['lotus'] = 'Lotus';
+		zoneHash['rational'] = 'Rational';
+		//zoneHash['tivoli'] = 'Tivoli zone';
+		zoneHash['websphere'] = 'WebSphere';
+		//zoneHash['architecture'] = 'Technical library';
+		//zoneHash['autonomic'] = 'Technical library';
+		zoneHash['java'] = 'Технология Java';
+		//zoneHash['cloud'] = 'Technical library';
+		//zoneHash['industry'] = 'Technical library';
+		zoneHash['library'] = 'Техническая библиотека';
+		zoneHash['linux'] = 'Linux';
+		zoneHash['opensource'] = 'Open source';
+		//zoneHash['power'] = 'Technical library';
+		zoneHash['webservices'] = 'SOA и web-сервисы';
+		//zoneHash['web'] = 'Technical library';
+		zoneHash['xml'] = 'XML';
+		//zoneHash['wireless'] = 'Technical library';
+		jQuery.checkRB();
+		jQuery.getPopularTags("/developerworks/dwtags/dwjquerytabtags?lang=" + rBHash['viperLang'] + "&base=" + jQuery.getNormalizedZoneUrl(location.href));
+		jQuery.getUserTags();
+		if(jQuery.isTutorial(location.href) == "true") {
+			jQuery.getTagsForContent("/developerworks/tagging/UseCaseServlet?lang=" + rBHash['viperLlang'] + "&format=maverick&cType=tutorials&use_case=geturltags&action=gettags&url=" + jQuery.normalizeUrl(location.href));
+		}
+		else {
+			jQuery.getTagsForContent("/developerworks/tagging/UseCaseServlet?lang=" + rBHash['viperLang'] + "&format=maverick&cType=articles&use_case=geturltags&action=gettags&url=" + jQuery.normalizeUrl(location.href));
+
+		}
+		// si
+		initSI();
+		});
+</script>
+ <!-- JQuery end -->
+<script language="JavaScript" src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/overlay.js" type="text/javascript"></script>
+
+<!-- BEGIN: Use this section to set page specific variables for the Unica Page Tag -->
+<script language="JavaScript">var NTPT_PGEXTRA="ibmSkillLevel=1&ibmAdoptPhase=667&ibmRole=-&ibmCmaId=146178";</script>
+<!--END --><!-- SCRIPTS_INCLUDE_END -->
+
+<div id="ibm-metrics">
+<script src="%D0%A0%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%20%D1%81%D0%BE%D0%B1%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D0%B9%20%D1%84%D0%B0%D0%B9%D0%BB%D0%BE%D0%B2%D0%BE%D0%B9%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%81%20%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E%20FUSE_files/stats.js" type="text/javascript">//</script>
+</div>
+
+
+
+<div style="position: absolute; z-index: 95; display: none;" id="cluetip-waitimage"></div><div style="z-index: 96; display: none; position: absolute;" id="cluetip"><div style="z-index: 95; opacity: 0.1; top: 1px; left: 1px; position: absolute; background-color: rgb(0, 0, 0);"></div><div style="z-index: 94; opacity: 0.1; top: 2px; left: 2px; position: absolute; background-color: rgb(0, 0, 0);"></div><div style="z-index: 93; opacity: 0.1; top: 3px; left: 3px; position: absolute; background-color: rgb(0, 0, 0);"></div><div style="z-index: 92; opacity: 0.1; top: 4px; left: 4px; position: absolute; background-color: rgb(0, 0, 0);"></div><div style="z-index: 91; opacity: 0.1; top: 5px; left: 5px; position: absolute; background-color: rgb(0, 0, 0);"></div><div style="z-index: 90; opacity: 0.1; top: 6px; left: 6px; position: absolute; background-color: rgb(0, 0, 0);"></div><div style="position: relative; z-index: 97;" id="cluetip-outer"><div id="cluetip-title"></div><div id="cluetip-inner"></div></div><div id="cluetip-extra"></div><div style="z-index: 97;" id="cluetip-arrows" class="cluetip-arrows"></div></div></body></html>
